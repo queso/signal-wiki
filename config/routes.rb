@@ -1,5 +1,5 @@
 ActionController::Routing::Routes.draw do |map|
-  map.resources :pages
+  map.resources :pages, :users, :sessions
 
   # The priority is based upon order of creation: first created -> highest priority.
 
@@ -24,6 +24,6 @@ ActionController::Routing::Routes.draw do |map|
   # map.root :controller => "welcome"
 
   # Install the default routes as the lowest priority.
-  map.connect ':controller/:action/:id'
-  map.connect ':controller/:action/:id.:format'
+  # map.connect ':controller/:action/:id'
+  # map.connect ':controller/:action/:id.:format'
 end
