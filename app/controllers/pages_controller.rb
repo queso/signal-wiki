@@ -2,30 +2,35 @@ class PagesController < ApplicationController
   # GET /pages
   # GET /pages.xml
   def index
-    @pages = Page.find(:all)
+    redirect_to page_url("Home")
 
-    respond_to do |format|
-      format.html # index.html.erb
-      format.xml  { render :xml => @pages }
-    end
+    #respond_to do |format|
+    #  format.html # index.html.erb
+    #  format.xml  { render :xml => @pages }
+    #end
   end
 
   # GET /pages/1
   # GET /pages/1.xml
   def show
-    @page = Page.find(params[:id])
-
-    respond_to do |format|
-      format.html # show.html.erb
-      format.xml  { render :xml => @page }
+    @page = Page.find_by_permalink(params[:id])
+    
+    if @page
+      respond_to do |format|
+        format.html # show.html.erb
+        format.xml  { render :xml => @page }
+      end
+    else
+      session[:new_title] = params[:id]
+      redirect_to new_page_url()
     end
   end
 
   # GET /pages/new
   # GET /pages/new.xml
   def new
-    @page = Page.new
-
+    @page = Page.new(:title => session[:new_title])
+    @button_text = "Add this page"
     respond_to do |format|
       format.html # new.html.erb
       format.xml  { render :xml => @page }
@@ -34,7 +39,7 @@ class PagesController < ApplicationController
 
   # GET /pages/1/edit
   def edit
-    @page = Page.find(params[:id])
+    @page = Page.find_by_permalink(params[:id])
   end
 
   # POST /pages
@@ -58,7 +63,7 @@ class PagesController < ApplicationController
   # PUT /pages/1.xml
   def update
     @page = Page.find(params[:id])
-
+    @button_text = "Save this version"
     respond_to do |format|
       if @page.update_attributes(params[:page])
         flash[:notice] = 'Page was successfully updated.'
@@ -82,4 +87,6 @@ class PagesController < ApplicationController
       format.xml  { head :ok }
     end
   end
+  
+  
 end

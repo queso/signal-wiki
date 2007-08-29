@@ -1,21 +1,15 @@
 <p>
-  <b>Title:</b>
-  <%=h @page.title %>
+  <h2><%=h @page.title %></h2>
 </p>
 
 <p>
   <b>Body:</b>
-  <%=h @page.body %>
+  <%= @page.body %>
 </p>
 
 <p>
-  <b>User:</b>
+  <b>Author:</b>
   <%=h @page.user_id %>
-</p>
-
-<p>
-  <b>Permalink:</b>
-  <%=h @page.permalink %>
 </p>
 
 
