@@ -33,4 +33,8 @@ class Page < ActiveRecord::Base
     find_by_permalink(permalink)
   end
   
+  def author
+    user ? user.login.capitalize : "Anonymous"
+  end
+  
 end

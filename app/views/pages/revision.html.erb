@@ -6,7 +6,7 @@
 </p>
 
 <div class="meta_info">
-<%= @page.user_id %>
+<%= @page.author %>
 <%= link_to('Previous revision', revision_page_url(:id => @page.permalink, :version => (@page.previous.version))) if @page.previous %>
 <%= link_to('Next revision', revision_page_url(:id => @page.permalink, :version => (@page.next.version))) if @page.next %>
 <%= link_to 'Current version', wiki_page_url(@page.permalink) %>

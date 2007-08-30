@@ -52,12 +52,14 @@ class PagesController < ApplicationController
   # GET /pages/1/edit
   def edit
     @page = Page.find_by_permalink(params[:id])
+    @button_text = "Save this version"
   end
 
   # POST /pages
   # POST /pages.xml
   def create
     @page = Page.new(params[:page])
+    @page.user = current_user
 
     respond_to do |format|
       if @page.save
@@ -75,7 +77,8 @@ class PagesController < ApplicationController
   # PUT /pages/1.xml
   def update
     @page = Page.find_by_permalink(params[:id])
-    @button_text = "Save this version"
+    @page.user = current_user
+    
     respond_to do |format|
       if @page.update_attributes(params[:page])
         flash[:notice] = 'Page was successfully updated.'
