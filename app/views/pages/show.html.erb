@@ -1,17 +1,13 @@
-<p>
-  <h2><%=h @page.title %></h2>
+<h2><%=h @page.title %></h2>
+
+
+<p class="wiki_body">
+  <%= wikified_body(@page.body) %>
 </p>
 
-<p>
-  <b>Body:</b>
-  <%= @page.body %>
-</p>
-
-<p>
-  <b>Author:</b>
-  <%=h @page.user_id %>
-</p>
-
-
-<%= link_to 'Edit', edit_page_path(@page) %> |
-<%= link_to 'Back', pages_path %>
+<div class="meta_info">
+<%= @page.user_id %>
+<%= link_to 'Edit', edit_page_path(@page) %>
+<%= link_to('Previous revision', revision_page_url(:id => @page.permalink, :version => (@page.version - 1) )) if @page.versions.size > 1 %>
+<%= link_to 'Home', pages_path %>
+</div>

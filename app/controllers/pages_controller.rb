@@ -1,8 +1,10 @@
 class PagesController < ApplicationController
+  before_filter :login_required, :only => [:new, :create, :edit, :update, :destroy]
+  
   # GET /pages
   # GET /pages.xml
   def index
-    redirect_to page_url("Home")
+    redirect_to wiki_page_url("home")
 
     #respond_to do |format|
     #  format.html # index.html.erb
@@ -15,6 +17,7 @@ class PagesController < ApplicationController
   def show
     @page = Page.find_by_permalink(params[:id])
     
+    
     if @page
       respond_to do |format|
         format.html # show.html.erb
@@ -26,10 +29,19 @@ class PagesController < ApplicationController
     end
   end
 
+  def revision
+    @page = Page.find_by_permalink(params[:id])
+    @page = Page.find_version(@page.id, params[:version])
+    
+    respond_to do |format|
+      format.html
+    end
+  end
+
   # GET /pages/new
   # GET /pages/new.xml
   def new
-    @page = Page.new(:title => session[:new_title])
+    @page = Page.new(:title => session[:new_title].gsub("-", " ").capitalize)
     @button_text = "Add this page"
     respond_to do |format|
       format.html # new.html.erb
@@ -50,7 +62,7 @@ class PagesController < ApplicationController
     respond_to do |format|
       if @page.save
         flash[:notice] = 'Page was successfully created.'
-        format.html { redirect_to(@page) }
+        format.html { redirect_to(wiki_page_url(@page)) }
         format.xml  { render :xml => @page, :status => :created, :location => @page }
       else
         format.html { render :action => "new" }
@@ -62,12 +74,12 @@ class PagesController < ApplicationController
   # PUT /pages/1
   # PUT /pages/1.xml
   def update
-    @page = Page.find(params[:id])
+    @page = Page.find_by_permalink(params[:id])
     @button_text = "Save this version"
     respond_to do |format|
       if @page.update_attributes(params[:page])
         flash[:notice] = 'Page was successfully updated.'
-        format.html { redirect_to(@page) }
+        format.html { redirect_to(wiki_page_url(@page)) }
         format.xml  { head :ok }
       else
         format.html { render :action => "edit" }

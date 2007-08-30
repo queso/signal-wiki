@@ -1,5 +1,11 @@
 ActionController::Routing::Routes.draw do |map|
-  map.resources :pages, :users, :sessions
+  map.resources :pages, :member => {:revision => :get}
+  map.resources :users
+  map.resource :session
+  map.login  '/login',  :controller => 'sessions', :action => 'new'
+  map.logout '/logout', :controller => 'sessions', :action => 'destroy'
+  map.wiki_page '/:id', :controller => "pages", :action => "show"
+  map.connect '', :controller => "pages"
 
   # The priority is based upon order of creation: first created -> highest priority.
 

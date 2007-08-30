@@ -8,4 +8,11 @@ describe Page do
   it "should be valid" do
     @page.should be_valid
   end
+  
+  it "should have a permalink" do
+    @page.title = "Home Page"
+    @page.save
+    @page.should have_permalink
+  end
+  
 end
