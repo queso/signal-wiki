@@ -5,7 +5,7 @@
 
   <p>
     <b>Body</b><br />
-    <%= f.text_area :body %>
+	<%= textile_editor 'page', 'body'-%>
   </p>
 
   <p>
@@ -16,3 +16,4 @@
   <p>
     <%= f.submit @button_text %>
   </p>
+<%= textile_editor_initialize -%>
