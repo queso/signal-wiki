@@ -3,4 +3,7 @@
 
 class ApplicationController < ActionController::Base
   helper :all # include all helpers, all the time
+  require 'redcloth'
+  include AuthenticatedSystem
+  
 end
