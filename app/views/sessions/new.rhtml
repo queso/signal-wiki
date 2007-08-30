@@ -1,4 +1,9 @@
 <% form_tag session_path do -%>
+<p>
+  <label for="openid_url">OpenID:</label>
+  <%= text_field_tag :openid_url %>
+</p>
+
 <p><label for="login">Login</label><br/>
 <%= text_field_tag 'login' %></p>
 

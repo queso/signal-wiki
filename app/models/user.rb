@@ -21,19 +21,19 @@ class User < ActiveRecord::Base
   
   has_many :pages
 
-  validates_presence_of     :login, :email
+  validates_presence_of     :login, :email, :if => :not_openid?
   validates_presence_of     :password,                   :if => :password_required?
   validates_presence_of     :password_confirmation,      :if => :password_required?
   validates_length_of       :password, :within => 4..40, :if => :password_required?
   validates_confirmation_of :password,                   :if => :password_required?
-  validates_length_of       :login,    :within => 3..40
-  validates_length_of       :email,    :within => 3..100
+  validates_length_of       :login,    :within => 3..40, :if => :not_openid?
+  validates_length_of       :email,    :within => 3..100, :if => :not_openid?
   validates_uniqueness_of   :login, :email, :case_sensitive => false
   before_save :encrypt_password
   
   # prevents a user from submitting a crafted form that bypasses activation
   # anything else you want your user to change should be added here.
-  attr_accessible :login, :email, :password, :password_confirmation
+  #attr_accessible :login, :email, :password, :password_confirmation
   
   # Authenticates a user by their login name and unencrypted password.  Returns the user or nil.
   def self.authenticate(login, password)
@@ -88,8 +88,12 @@ class User < ActiveRecord::Base
       self.crypted_password = encrypt(password)
     end
     
+    def not_openid?
+      identity_url.blank?
+    end
+    
     def password_required?
-      crypted_password.blank? || !password.blank?
+      not_openid? && (crypted_password.blank? || !password.blank?)
     end
     
 end

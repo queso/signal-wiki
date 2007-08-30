@@ -33,12 +33,4 @@ class Page < ActiveRecord::Base
     find_by_permalink(permalink)
   end
   
-  def previous_version
-    (versions.size > 1 && version > 1) ? version - 1 : false
-  end
-  
-  def next_version
-    versions.size > version ? version + 1 : false
-  end
-  
 end

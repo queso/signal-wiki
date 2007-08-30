@@ -1,5 +1,5 @@
 class PagesController < ApplicationController
-  before_filter :login_required, :only => [:new, :create, :edit, :update, :destroy]
+  before_filter :login_required, :except => [:index, :show, :revision]
   
   # GET /pages
   # GET /pages.xml
