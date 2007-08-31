@@ -7,15 +7,29 @@
 	<%= javascript_include_tag :all, :cache => "signal" %>
 	<%=  stylesheet_link_tag :all, :cache => "signal" %>
 </head>
-<body>
+<body id="<%= controller.controller_name %>">
 	
 	<div id="header">
-	  <ul id="nav">
-		
-	  </ul>
-	</div>
+		<%= render :partial => "shared/navbar" %>
+		<h1><%= link_to "Signal", "/" %></h1>
+	</div><!-- end #header -->
 	
-	<%= yield %>
+	<div id="container">
+		<div id="main">
+			<div id="flash">
+			<% flash.each do |key, msg| %>
+			  <%= content_tag :div, msg, :class => key %>
+			<% end %>
+			</div>
+	
+			<%= yield %>
+		</div><!-- end #main -->
+		
+		<div id="right">
+		  <%= yield :right %>
+		</div><!-- end #right -->
+		
+	</div><!-- end #container -->
 	
 </body>
 </html>

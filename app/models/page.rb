@@ -29,10 +29,6 @@ class Page < ActiveRecord::Base
     self.permalink
   end
   
-  def self.exists?(permalink)
-    find_by_permalink(permalink)
-  end
-  
   def author
     user ? user.login.capitalize : "Anonymous"
   end

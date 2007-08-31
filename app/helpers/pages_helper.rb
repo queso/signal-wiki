@@ -8,7 +8,11 @@ module PagesHelper
   
   def wiki_link(wiki_words)
     permalink = wiki_words.downcase.gsub(' ', '-')
-    link_to wiki_words, wiki_page_url(permalink), ({:class => "new_wiki_link"} if Page.exists?(permalink))
+    if Page.exists?(:permalink => permalink)
+      link_to wiki_words, wiki_page_url(permalink)
+    else
+      link_to wiki_words, wiki_page_url(permalink), :class => "new_wiki_link" 
+    end
   end
   
 end

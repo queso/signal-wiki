@@ -5,9 +5,11 @@
   <%= wikified_body(@page.body) %>
 </p>
 
-<div class="meta_info">
-<%= @page.author %>
-<%= link_to 'Edit', edit_page_path(@page) %>
-<%= link_to('Previous revision', revision_page_url(:id => @page.permalink, :version => (@page.version - 1) )) if @page.versions.size > 1 %>
-<%= link_to 'Home', pages_path %>
-</div>
+<% content_for :right do -%>
+<h5>Author: <%= @page.author %></h5>
+<ul class="meta_info">
+	<li><%= link_to 'Edit this page', edit_page_path(@page) %></li>
+	<li><%= link_to('View previous revision', revision_page_url(:id => @page.permalink, :version => (@page.version - 1) )) if @page.versions.size > 1 %></li>
+	<li><%= link_to 'Return to home', pages_path unless @page.permalink == "home" %></li>
+</ul>
+<% end -%>
