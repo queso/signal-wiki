@@ -17,6 +17,20 @@ a {
 	color:#2244CC;
 }
 
+#flash {
+	width: 70%;
+	margin: 0 auto;
+	padding: 10px;
+	text-align: center;
+	font-size: 0.85em;
+}
+
+#flash .notice {
+	background: #b4eeb4;
+	padding: 10px;
+	border: 2px solid green;
+}
+
 /******************************************************************
   #Header control - includes font, style, layout, color, etc
 ******************************************************************/
