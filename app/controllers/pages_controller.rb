@@ -91,6 +91,16 @@ class PagesController < ApplicationController
     end
   end
 
+  def rollback
+    @page = Page.find_by_permalink(params[:id])
+    @page.revert_to!(params[:version])
+    respond_to do |format|
+      flash[:notice] = "#{@page.title} was successfully rolled back."
+      format.html { redirect_to(wiki_page_url(@page)) }
+      format.xml  { head :ok }
+    end
+  end
+
   # DELETE /pages/1
   # DELETE /pages/1.xml
   def destroy
