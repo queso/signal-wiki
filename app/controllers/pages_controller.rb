@@ -32,7 +32,6 @@ class PagesController < ApplicationController
   def revision
     @page = Page.find_by_permalink(params[:id])
     @page = Page.find_version(@page.id, params[:version])
-    @author = @page.user_id ? User.find(@page.user_id).login.capitalize : "Anonymous"
     
     respond_to do |format|
       format.html

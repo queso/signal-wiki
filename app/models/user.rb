@@ -1,5 +1,5 @@
 # == Schema Information
-# Schema version: 4
+# Schema version: 8
 #
 # Table name: users
 #
@@ -12,6 +12,7 @@
 #  updated_at                :datetime      
 #  remember_token            :string(255)   
 #  remember_token_expires_at :datetime      
+#  identity_url              :string        
 #
 
 require 'digest/sha1'

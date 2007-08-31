@@ -1,5 +1,5 @@
 # == Schema Information
-# Schema version: 4
+# Schema version: 8
 #
 # Table name: pages
 #
@@ -10,8 +10,8 @@
 #  permalink  :string(255)   
 #  created_at :datetime      
 #  updated_at :datetime      
-#  version    :integer       
 #  private    :boolean       
+#  version    :integer       
 #
 
 class Page < ActiveRecord::Base
@@ -29,8 +29,6 @@ class Page < ActiveRecord::Base
     self.permalink
   end
   
-  def author
-    user ? user.login.capitalize : "Anonymous"
-  end
+
   
 end
