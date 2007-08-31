@@ -95,7 +95,7 @@ class PagesController < ApplicationController
     @page = Page.find_by_permalink(params[:id])
     @page.revert_to!(params[:version])
     respond_to do |format|
-      flash[:notice] = "#{@page.title} was successfully rolled back."
+      flash[:notice] = "#{@page.title} was successfully rolled back to revision #{params[:version]}"
       format.html { redirect_to(wiki_page_url(@page)) }
       format.xml  { head :ok }
     end
