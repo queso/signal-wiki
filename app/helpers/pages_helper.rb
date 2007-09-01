@@ -19,4 +19,12 @@ module PagesHelper
     version == Page.find(id).version
   end
   
+  def body_input(f)
+    if site.disable_teh
+      f.text_area :body
+    else
+      textile_editor 'page', 'body'
+    end
+  end
+  
 end
