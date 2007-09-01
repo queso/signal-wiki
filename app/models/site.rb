@@ -15,4 +15,9 @@
 #
 
 class Site < ActiveRecord::Base
+  
+  def title
+    super || "Signal"
+  end
+  
 end
