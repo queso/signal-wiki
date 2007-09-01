@@ -1,3 +1,7 @@
+class Site < ActiveRecord::Base
+  set_table_name "sites"
+end
+
 class CreateSites < ActiveRecord::Migration
   def self.up
     create_table :sites do |t|
@@ -10,6 +14,7 @@ class CreateSites < ActiveRecord::Migration
 
       t.timestamps 
     end
+    Site.create :title => 'Signal'
   end
 
   def self.down
