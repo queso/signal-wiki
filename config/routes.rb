@@ -1,7 +1,7 @@
 ActionController::Routing::Routes.draw do |map|
   map.open_id_complete 'session', :controller => "sessions", :action => "create", :requirements => { :method => :get }
   map.resource :session
-
+  map.resource :site
   
   map.resources :pages, :member => {:revision => :get, :rollback => :get}
   map.resources :users 

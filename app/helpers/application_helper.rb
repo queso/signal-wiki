@@ -2,7 +2,7 @@
 module ApplicationHelper
   
   def site_name
-    site ? site.title : "Signal"
+    site.title || "Signal"
   end
   
   def author(user_id)

@@ -50,6 +50,8 @@ a {
 #header ul#nav li {
 	font-family:'Lucida Grande',Verdana,Arial,Helvetica,sans-serif;
 	font-size:0.75em;
+	display: inline;
+	padding: 0 .5em;
 }
 
 #header h1 {

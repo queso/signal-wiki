@@ -15,4 +15,8 @@ module PagesHelper
     end
   end
   
+  def current_revision(id, version)
+    version == Page.find(id).version
+  end
+  
 end

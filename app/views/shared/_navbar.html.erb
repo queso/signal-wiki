@@ -1,5 +1,6 @@
 	  <ul id="nav">
 		<% if logged_in? -%>
+			<li><%= link_to "settings", site_url %></li>
 			<li><%= link_to "logout", logout_path %></li>
 		<% else -%>
 			<li><%= link_to "login", login_path %></li>
