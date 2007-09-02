@@ -1,5 +1,4 @@
 class Site < ActiveRecord::Base
-  set_table_name "sites"
 end
 
 class CreateSites < ActiveRecord::Migration
