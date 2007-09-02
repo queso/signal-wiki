@@ -1,6 +1,6 @@
 class AddPrivateToPages < ActiveRecord::Migration
   def self.up
-    add_column :pages, :private, :boolean
+    add_column :pages, :private_page, :boolean
   end
 
   def self.down

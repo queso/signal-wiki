@@ -1,5 +1,6 @@
 class PagesController < ApplicationController
   before_filter :require_login, :except => [:index, :show, :revision]
+  before_filter :check_private, :only => [:show, :revision]
   
   # GET /pages
   # GET /pages.xml
@@ -59,7 +60,7 @@ class PagesController < ApplicationController
   # POST /pages.xml
   def create
     @page = Page.new(params[:page])
-    @page.user = current_user
+    @page.user = current_user if logged_in?
 
     respond_to do |format|
       if @page.save
@@ -111,6 +112,12 @@ class PagesController < ApplicationController
       format.html { redirect_to(pages_url) }
       format.xml  { head :ok }
     end
+  end
+  
+  def check_private
+    @page = Page.find_by_permalink(params[:id])
+    return unless @page
+    @page.private_page ? login_required : true
   end
   
   def require_login

@@ -32,7 +32,7 @@ ActiveRecord::Schema.define(:version => 9) do
     t.string   "permalink"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.boolean  "private"
+    t.boolean  "private_page"
   end
 
   create_table "pages", :force => true do |t|
@@ -42,7 +42,7 @@ ActiveRecord::Schema.define(:version => 9) do
     t.string   "permalink"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.boolean  "private"
+    t.boolean  "private_page"
     t.integer  "version"
   end
 
