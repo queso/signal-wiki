@@ -1,5 +1,5 @@
 class PagesController < ApplicationController
-  before_filter :login_required, :except => [:index, :show, :revision]
+  before_filter :require_login, :except => [:index, :show, :revision]
   
   # GET /pages
   # GET /pages.xml
@@ -113,5 +113,8 @@ class PagesController < ApplicationController
     end
   end
   
+  def require_login
+    site.require_login_to_post ? login_required : true
+  end
   
 end
