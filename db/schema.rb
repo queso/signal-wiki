@@ -2,7 +2,7 @@
 # migrations feature of ActiveRecord to incrementally modify your database, and
 # then regenerate this schema definition.
 
-ActiveRecord::Schema.define(:version => 8) do
+ActiveRecord::Schema.define(:version => 9) do
 
   create_table "open_id_authentication_associations", :force => true do |t|
     t.binary  "server_url"
@@ -67,6 +67,7 @@ ActiveRecord::Schema.define(:version => 8) do
     t.string   "remember_token"
     t.datetime "remember_token_expires_at"
     t.string   "identity_url"
+    t.boolean  "admin"
   end
 
 end

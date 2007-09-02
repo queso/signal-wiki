@@ -1,5 +1,5 @@
 class SitesController < ApplicationController
-
+  before_filter :login_required
   # GET /sites/1
   # GET /sites/1.xml
   def show
@@ -27,5 +27,10 @@ class SitesController < ApplicationController
       end
     end
   end
+
+  protected
+    def authorized?
+      admin?
+    end
 
 end

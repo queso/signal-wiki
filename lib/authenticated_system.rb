@@ -52,6 +52,10 @@ module AuthenticatedSystem
       authorized? || access_denied
     end
 
+    def admin?
+      logged_in? && current_user.admin?
+    end
+
     # Redirect as appropriate when an access request fails.
     #
     # The default action is to redirect to the login screen.
@@ -115,6 +119,8 @@ module AuthenticatedSystem
         self.current_user = user
       end
     end
+    
+
 
   private
     @@http_auth_headers = %w(X-HTTP_AUTHORIZATION HTTP_AUTHORIZATION Authorization)
