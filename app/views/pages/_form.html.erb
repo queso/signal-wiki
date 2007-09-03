@@ -1,15 +1,16 @@
   <p>
-    <b>Title</b><br />
+    <label for="page_title">Page Title</label><br />
     <%= f.text_field :title %>
   </p>
 
   <p>
-    <b>Body</b><br />
+    <label for="body">Body</label><br />
 	<%= body_input(f) %>
   </p>
 
   <p>
-    <%= f.check_box :private_page %> <b>Make page private</b>
+	<label for="private_page">Make page private</label>
+    <%= f.check_box :private_page %>
 	
   <p>
 

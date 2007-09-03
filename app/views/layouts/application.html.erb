@@ -10,7 +10,7 @@
 <body id="<%= controller.controller_name %>">
 	
 	<div id="header">
-		<%= render :partial => "shared/navbar" %>
+		<div id="navbar"></div>
 		<h1><%= link_to site.title, "/", :id => "site_name" %></h1>
 	</div><!-- end #header -->
 	
@@ -30,6 +30,10 @@
 		</div><!-- end #right -->
 		
 	</div><!-- end #container -->
-	
+
+
+<script type="text/javascript">
+new Ajax.Request('<%= url_for :controller => "menus", :action => "navbar" %>', { asychronous:true, evalScripts:true, method: 'get'})
+</script>	
 </body>
 </html>

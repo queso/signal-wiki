@@ -1,0 +1,45 @@
+Sweeper Generator
+=================
+
+Usage:
+
+  ./script/generate sweeper SweeperName callback1 callback2
+
+Description:
+
+	The sweeper generator creates stubs for a new sweeper.
+
+	The generator takes one sweeper name and a list of sweeper 
+	methods as arguments. The sweeper name will be used as 
+	the initial observer, but you can change that after it
+	has been generated.
+
+	The sweeper name may be given in CamelCase or under_score 
+	and should NOT be suffixed with 'Sweeper'. 
+
+	The generator creates a sweeper class in app/models.
+	
+Example:
+
+	./script/generate sweeper Vote after_save before_destroy
+
+	Sweeper: app/models/vote_sweeper.rb	  
+
+	class VoteSweeper < ActionController::Caching::Sweeper
+
+		observe Vote
+
+		def after_save(record)
+		end
+	  
+		def after_update(record)
+		end
+	  
+	end
+
+== Author
+
+TaQ on the Rails Trac
+
+Geoffrey Grosenbach
+http://topfunky.com

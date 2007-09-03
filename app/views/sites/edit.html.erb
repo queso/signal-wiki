@@ -4,17 +4,17 @@
 
 <% form_for(@site, :url => site_path) do |f| %>
   <p>
-    <b>Title</b><br />
+    <label for="site_title">Site title</label><br />
     <%= f.text_field :title %>
   </p>
 
   <p>
-    <b>Akismet key</b><br />
+    <label for="akismet_key">Akismet key</label><br />
     <%= f.text_field :akismet_key %>
   </p>
 
   <p>
-    <b>Akismet url</b><br />
+    <label for="akismet url">Akismet url</label><br />
     <%= f.text_field :akismet_url %>
   </p>
 

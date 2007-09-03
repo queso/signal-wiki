@@ -8,6 +8,7 @@ ActionController::Routing::Routes.draw do |map|
 
   map.login  '/login',  :controller => 'sessions', :action => 'new'
   map.logout '/logout', :controller => 'sessions', :action => 'destroy'
+  map.connect 'menus/:action', :controller => 'menus'
   
   map.connect '', :controller => "pages"
   map.wiki_page '/:id', :controller => "pages", :action => "show"

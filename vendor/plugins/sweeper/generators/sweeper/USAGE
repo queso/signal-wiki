@@ -1,0 +1,1 @@
+./script/generate sweeper SweeperName callback1 callback2

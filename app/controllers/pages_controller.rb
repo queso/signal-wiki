@@ -1,6 +1,8 @@
 class PagesController < ApplicationController
   before_filter :require_login, :except => [:index, :show, :revision]
   before_filter :check_private, :only => [:show, :revision]
+  caches_page :show
+  cache_sweeper :page_sweeper, :only => [:create, :update]
   
   # GET /pages
   # GET /pages.xml
