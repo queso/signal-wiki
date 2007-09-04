@@ -9,9 +9,11 @@
 </head>
 <body id="<%= controller.controller_name %>">
 	
+<!-- <%= "This page was cached at #{Time.now()}" %> -->	
+
 	<div id="header">
 		<div id="navbar"></div>
-		<h1><%= link_to site.title, "/", :id => "site_name" %></h1>
+		<h1><%= link_to site.title, wiki_page_url("home"), :id => "site_name" %></h1>
 	</div><!-- end #header -->
 	
 	<div id="container">

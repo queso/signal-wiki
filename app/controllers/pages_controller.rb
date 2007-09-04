@@ -4,6 +4,8 @@ class PagesController < ApplicationController
   caches_page :show
   cache_sweeper :page_sweeper, :only => [:create, :update]
   
+  after_filter :only => [:show]
+  
   # GET /pages
   # GET /pages.xml
   def index
@@ -66,7 +68,7 @@ class PagesController < ApplicationController
 
     respond_to do |format|
       if @page.save
-        flash[:notice] = 'Page was successfully created.'
+        #flash[:notice] = 'Page was successfully created.'
         format.html { redirect_to(wiki_page_url(@page)) }
         format.xml  { render :xml => @page, :status => :created, :location => @page }
       else
@@ -84,7 +86,7 @@ class PagesController < ApplicationController
     
     respond_to do |format|
       if @page.update_attributes(params[:page])
-        flash[:notice] = 'Page was successfully updated.'
+        #flash[:notice] = 'Page was successfully updated.'
         format.html { redirect_to(wiki_page_url(@page)) }
         format.xml  { head :ok }
       else
@@ -98,7 +100,7 @@ class PagesController < ApplicationController
     @page = Page.find_by_permalink(params[:id])
     @page.revert_to!(params[:version])
     respond_to do |format|
-      flash[:notice] = "#{@page.title} was successfully rolled back to revision #{params[:version]}"
+      #flash[:notice] = "#{@page.title} was successfully rolled back to revision #{params[:version]}"
       format.html { redirect_to(wiki_page_url(@page)) }
       format.xml  { head :ok }
     end
@@ -114,6 +116,12 @@ class PagesController < ApplicationController
       format.html { redirect_to(pages_url) }
       format.xml  { head :ok }
     end
+  end
+  
+  def cache_show
+    if ActionController::Base.perform_caching
+      FileUtils.cp File.join(RAILS_ROOT, "public", "pages", "#{params[:id]}.html"), File.join(RAILS_ROOT, "public", "#{params[:id]}.html") 
+    end    
   end
   
   def check_private

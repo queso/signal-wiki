@@ -8,7 +8,7 @@ class PageSweeper < ActionController::Caching::Sweeper
   def expire_record(record)
     page_id = record.permalink
     logger.info "Record to expire is: " + page_id.to_s
-    expire_page(hash_for_page_path(:id => page_id))
+    expire_page("/#{params[:id]}")
   end
 
 end
