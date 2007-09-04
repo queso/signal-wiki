@@ -29,6 +29,9 @@ class Page < ActiveRecord::Base
     self.permalink
   end
   
-
+  def self.find_all_by_wiki_word(wiki_word)
+    pages = self.find(:all)
+    pages.select {|p| p.body =~ /#{wiki_word}/i}
+  end
   
 end
