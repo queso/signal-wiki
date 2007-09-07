@@ -20,7 +20,7 @@ class PagesController < ApplicationController
   # GET /pages/1
   # GET /pages/1.xml
   def show
-    @page = Page.find_by_permalink(params[:id])
+    @page = Page.find_by_permalink(params[:id] || "home")
     
     
     if @page
