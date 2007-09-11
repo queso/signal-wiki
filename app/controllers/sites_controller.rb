@@ -28,6 +28,15 @@ class SitesController < ApplicationController
     end
   end
 
+  def expire_cache
+    pages = Page.find(:all)
+    pages.each do |p| 
+      expire_page("/#{p.permalink}")
+    end
+    flash[:notice] = "Deleted all cached files."
+    redirect_to site_url
+  end
+
   protected
     def authorized?
       admin?
