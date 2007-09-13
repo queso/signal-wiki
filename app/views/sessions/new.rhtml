@@ -1,19 +1,24 @@
 <% form_tag session_path do -%>
+<div id="openid_fields" <%= %( style="display:none") if cookies['use_open_id'].blank? %>>
+
 <p>
-  <label for="openid_url">OpenID:</label>
+  <label for="openid_url">OpenID or <%= link_to_function "login with your password", "LoginForm.setToPassword()", :class => "small_link"%></label><br />
   <%= text_field_tag :openid_url %>
 </p>
+</div>
 
-<p><label for="login">Login</label><br/>
+<div id="password_fields" <%= %( style="display:none") unless cookies['use_open_id'].blank? %>>
+
+<p><label for="login">Login or <%= link_to_function "login with OpenID", "LoginForm.setToOpenID()", :class => "small_link" %></label><br/>
 <%= text_field_tag 'login' %></p>
 
 <p><label for="password">Password</label><br/>
 <%= password_field_tag 'password' %></p>
+</div>
 
-<!-- Uncomment this if you want this functionality
 <p><label for="remember_me">Remember me:</label>
 <%= check_box_tag 'remember_me' %></p>
--->
+
 
 <p><%= submit_tag 'Log in' %></p>
 <% end -%>

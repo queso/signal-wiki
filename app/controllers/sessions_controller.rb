@@ -9,8 +9,10 @@ class SessionsController < ApplicationController
 
   def create
     if using_open_id?
+      cookies[:use_open_id] = {:value => '1', :expires => 1.year.from_now.utc}
       open_id_authentication
     else
+      cookies[:use_open_id] = {:value => '0', :expires => 1.year.ago.utc}
       self.current_user = User.authenticate(params[:login], params[:password])
       if logged_in?
         if params[:remember_me] == "1"

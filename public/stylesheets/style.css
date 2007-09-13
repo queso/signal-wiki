@@ -134,3 +134,8 @@ ul.meta_info li {
 a.new_wiki_link {
 	color: red;
 }
+
+a.small_link {
+	font-size: 0.7em;
+	display: inline;
+}
