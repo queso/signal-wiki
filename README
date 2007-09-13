@@ -8,13 +8,10 @@ Enjoy :)
 
 #FIXME: Add these instructions
 
+=====  Required Gems
 
-=====  Optional Gems
+* json
+* ruby-openid
+* redcloth
 
-get RedCloth for using Textile in Ruby
 
-gem install RedCloth
-
-get OpenID for OpenID logins:
-
-gem install ruby-openid

@@ -19,16 +19,23 @@ a {
 
 #flash {
 	width: 70%;
-	margin: 0 auto;
-	padding: 10px;
+	margin: 5px auto;
 	text-align: center;
 	font-size: 0.85em;
 }
 
-#flash .notice {
+#flash p.notice {
 	background: #b4eeb4;
-	padding: 10px;
 	border: 2px solid green;
+	padding: 10px;
+	margin: 5px;
+}
+
+#flash p.error {
+	background: pink;
+	border: 2px solid red;
+	padding: 10px;
+	margin: 5px;
 }
 
 #site_name {

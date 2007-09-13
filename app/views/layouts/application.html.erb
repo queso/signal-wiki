@@ -19,10 +19,14 @@
 	<div id="container">
 		<div id="main">
 			<div id="flash">
-			<% flash.each do |key, msg| %>
-			  <%= content_tag :div, msg, :class => key %>
-			<% end %>
+			  <p id="error_div_id"></p>
+			  <p id="notice_div_id"></p>
 			</div>
+			<script type="text/javascript">
+		    	Flash.transferFromCookies();
+		    	Flash.writeDataTo('error', $('error_div_id'));
+		    	Flash.writeDataTo('notice', $('notice_div_id'));
+		  	</script>
 	
 			<%= yield %>
 		</div><!-- end #main -->

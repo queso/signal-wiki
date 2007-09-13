@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   helper :all # include all helpers, all the time
   require 'redcloth'
   include AuthenticatedSystem
+  include CacheableFlash
 
   before_filter :find_site
   helper_method  :site
