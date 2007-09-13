@@ -2,7 +2,7 @@
 
 
 <p class="wiki_body">
-  <%= wikified_body(@page.body) %>
+  <%= wikified_body(auto_link(@page.body)) %>
 </p>
 
 <% content_for :right do -%>
