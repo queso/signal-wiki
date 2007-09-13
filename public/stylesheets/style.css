@@ -139,3 +139,7 @@ a.small_link {
 	font-size: 0.7em;
 	display: inline;
 }
+
+#users a {
+	display: inline;
+}

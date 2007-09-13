@@ -1,0 +1,5 @@
+<%= render :partial => @user %>
+<br />
+<% for page in @user.pages do %>
+	<%= link_to page.title, page_path(page.permalink) %><br />
+<% end %>
