@@ -82,7 +82,7 @@ class PagesController < ApplicationController
   # PUT /pages/1.xml
   def update
     @page = Page.find_by_permalink(params[:id])
-    @page.user = current_user
+    @page.user = current_user if logged_in?
     
     respond_to do |format|
       if @page.update_attributes(params[:page])

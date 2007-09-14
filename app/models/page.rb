@@ -22,7 +22,9 @@ class Page < ActiveRecord::Base
   before_save :set_permalink
   
   def set_permalink
-    self.permalink = "#{title.downcase.strip.gsub(' ', '-')}" if self.permalink.blank?
+    if self.permalink.blank?
+      self.permalink = Page.count == 0 ? "home" : "#{title.downcase.strip.gsub(' ', '-')}" 
+    end
   end
   
   def to_param
