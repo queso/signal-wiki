@@ -21,3 +21,11 @@ test:
   database: ":memory:"
   verbosity: silent
 
+production:
+  adapter: mysql
+  encoding: utf8
+  database: signal_production
+  username: CHANGEME
+  password: CHANGEME
+  host: localhost
+

@@ -7,6 +7,11 @@ Enjoy :)
 =====  Installation instructions
 
 #FIXME: Add these instructions
+1. Download app
+2. Copy config/database.yml.example to config/database.yml
+3. Run "rake db:migrate" from the root of the app
+4. Start your rails app (using mongrel or fcgi, or whatever crazy method you use)
+5. Input your wiki stuffs
 
 =====  Required Gems
 
