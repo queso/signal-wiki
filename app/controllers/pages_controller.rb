@@ -46,7 +46,7 @@ class PagesController < ApplicationController
   # GET /pages/new
   # GET /pages/new.xml
   def new
-    @page = Page.new(:title => session[:new_title].to_s.gsub("-", " ").capitalize)
+    @page = Page.new(:title => session[:new_title].to_s.gsub("-", " ").capitalize, :permalink => session[:new_title])
     @button_text = "Add this page"
     respond_to do |format|
       format.html # new.html.erb
