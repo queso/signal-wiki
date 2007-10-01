@@ -6,7 +6,7 @@
 </p>
 
 <% content_for :right do -%>
-<h5>Author: <%= author(@page.user_id) %></h5>
+<h5>Author: <%= author(@page.user) %></h5>
 <ul class="meta_info">
 	<li><%= link_to 'Edit this page', edit_page_path(@page) %></li>
 	<li><%= link_to('View previous revision', revision_page_url(:id => @page.permalink, :version => (@page.version - 1) )) if (@page.versions.size > 1 && @page.version > 1) %></li>

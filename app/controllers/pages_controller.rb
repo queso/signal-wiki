@@ -64,7 +64,8 @@ class PagesController < ApplicationController
   # POST /pages.xml
   def create
     @page = Page.new(params[:page])
-    @page.user = current_user if logged_in?
+    @page.request = request
+    @page.user = logged_in? ? current_user : User.new
 
     respond_to do |format|
       if @page.save
@@ -82,7 +83,8 @@ class PagesController < ApplicationController
   # PUT /pages/1.xml
   def update
     @page = Page.find_by_permalink(params[:id])
-    @page.user = current_user if logged_in?
+    @page.request = request
+    @page.user = logged_in? ? current_user : User.new
     
     respond_to do |format|
       if @page.update_attributes(params[:page])
