@@ -2,7 +2,7 @@
 module ApplicationHelper
   
   def author(user)
-    user ? user.login.capitalize : "Anonymous"
+    (user && user.login) ? user.login.to_s.capitalize : "Anonymous"
   end
   
 end
