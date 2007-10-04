@@ -36,7 +36,18 @@ class SitesController < ApplicationController
     flash[:notice] = "Deleted all cached files."
     redirect_to site_url
   end
-
+  
+  def mark_all_private
+    pages = Page.find(:all)
+    pages.each do |p|
+      p.private_page = true
+      p.save
+      expire_page("/#{p.permalink}")
+    end
+    flash[:notice] = "Marked all pages as private"
+    redirect_to site_url
+  end
+  
   protected
     def authorized?
       admin?

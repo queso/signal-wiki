@@ -4,7 +4,6 @@ class PagesController < ApplicationController
   caches_page :show
   cache_sweeper :page_sweeper, :only => [:create, :update]
   
-  after_filter :only => [:show]
   
   # GET /pages
   # GET /pages.xml
@@ -120,16 +119,19 @@ class PagesController < ApplicationController
     end
   end
   
-  def cache_show
-    if ActionController::Base.perform_caching
-      FileUtils.cp File.join(RAILS_ROOT, "public", "pages", "#{params[:id]}.html"), File.join(RAILS_ROOT, "public", "#{params[:id]}.html") 
-    end    
-  end
   
   def check_private
     @page = Page.find_by_permalink(params[:id])
     return unless @page
-    @page.private_page ? login_required : true
+    if @page.private_page
+      login_required
+    else 
+      true
+    end
+  end
+  
+  def caching_allowed
+    ! @page.private_page
   end
   
   def require_login

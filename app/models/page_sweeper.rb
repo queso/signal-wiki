@@ -7,7 +7,7 @@ class PageSweeper < ActionController::Caching::Sweeper
   end
 
   def expire_record(permalink)
-    logger.info "Record to expire is: " + permalink.to_s
+    RAILS_DEFAULT_LOGGER.info "Record to expire is: " + permalink.to_s
     expire_page("/#{permalink}")
   end
 
@@ -16,7 +16,7 @@ class PageSweeper < ActionController::Caching::Sweeper
     pages = Page.find_all_by_wiki_word(wiki_word)
     pages.each do |p| 
       expire_page("/#{p.permalink}")
-      logger.info "Parent record to expire is: " + p.permalink.to_s
+      RAILS_DEFAULT_LOGGER.info "Parent record to expire is: " + p.permalink.to_s
     end
   end
 
