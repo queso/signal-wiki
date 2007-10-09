@@ -20,7 +20,7 @@ class Page < ActiveRecord::Base
   attr_accessor :ip, :agent, :referrer
   
   before_save :set_permalink
-  
+ 
   def validate
     site = Site.find(:first)
     if site.akismet_key? && is_spam?(site)
