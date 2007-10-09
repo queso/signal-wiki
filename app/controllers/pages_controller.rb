@@ -131,7 +131,9 @@ class PagesController < ApplicationController
   end
   
   def caching_allowed
-    ! @page.private_page
+    if @page
+      ! @page.private_page
+    end
   end
   
   def require_login
