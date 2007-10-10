@@ -1,0 +1,12 @@
+<h1>Search results</h1>
+
+
+<ul>
+<% for page in @pages %>
+	<li><%= page.title %></li>
+<% end %>
+</ul>
+
+<br />
+
+<%= link_to 'New page', new_page_path %>

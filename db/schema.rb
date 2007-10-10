@@ -2,7 +2,20 @@
 # migrations feature of ActiveRecord to incrementally modify your database, and
 # then regenerate this schema definition.
 
-ActiveRecord::Schema.define(:version => 9) do
+ActiveRecord::Schema.define(:version => 10) do
+
+  create_table "attachments", :force => true do |t|
+    t.integer  "size"
+    t.string   "content_type"
+    t.string   "filename"
+    t.integer  "height"
+    t.integer  "width"
+    t.integer  "parent_id"
+    t.string   "thumbnail"
+    t.integer  "page_id"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "open_id_authentication_associations", :force => true do |t|
     t.binary  "server_url"

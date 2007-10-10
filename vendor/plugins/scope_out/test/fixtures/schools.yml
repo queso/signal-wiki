@@ -1,0 +1,22 @@
+<% years = 365 %>
+harvard:
+  id: 1
+  name: Harvard
+  ivy_league: true
+  founded: <%= Date.today-100*years %>
+  bool_one: true
+  bool_two: true
+yale:
+  id: 2
+  name: Yale
+  ivy_league: true
+  founded: <%= Date.today-150*years %>
+  bool_one: true
+  bool_two: true
+ou:
+  id: 3
+  name: Ohio University
+  ivy_league: false
+  founded: <%= Date.today-200*years %>
+  bool_one: false
+  bool_two: false

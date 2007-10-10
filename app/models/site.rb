@@ -1,5 +1,5 @@
 # == Schema Information
-# Schema version: 8
+# Schema version: 10
 #
 # Table name: sites
 #

@@ -1,0 +1,106 @@
+=ScopeOut
+Author::    John Andrews
+License::   Distributes under the same terms as Ruby
+============
+
+==Usage:
+
+  class Person < ActiveRecord::Base
+    scope_out :women, :conditions => ["people.sex = ?", "F"]
+  end
+
+The above code creates three class methods: find_women, with_women, and calculate_women.
+It is equivalent to doing the following:
+
+  class Person < ActiveRecord::Base
+    def Person.with_women
+      with_scope :find => {:conditions => ['people.sex => ?', "F"]} do
+        yield
+      end
+    end
+
+    def Person.find_women(*args)
+      with_women {find(*args)}
+    end
+
+    def Person.calculate_women(*args)
+      with_women {calculate(*args)}
+    end
+  end
+
+==with_x
+Person.with_women acts just like with_scope, except the scope is already defined. For example:
+
+  Person.with_women do
+    Person.find(:all, :order => 'people.age desc')
+  end
+
+==find_x
+Person.find_women acts just like find, except that it is scoped with with_women:
+
+  Person.calculate_women(:first, :include => :pets)
+  # equivalent to Person.find(:first, :conditions => ["people.sex = ?", "F"], :include => :pets)
+
+==calculate_x
+Person.calculate_active (you guessed it) is exactly like Person.calculate, but scoped with 'with_women'
+
+  Person.calculate_active(:count, :all) 
+  # is the same as Person.calculate(:count, :all, :conditions => ["person.sex = ?", "F"])
+
+==Combined Scopes
+You can use the combined_scope method to define a scope which is the combination of two or more scopes that you previously defined with scope_out.
+
+  class Ticket
+    scope_out :active
+    scope_out :johns_tickets, :conditions => {:assigned_to => 'John'}
+    combined_scope :todo_for_john, [:active, :johns_tickets]
+  end
+
+==Association Finders
+scope_out also creates a module called AssociationMethods inside the class that defines the scope. Using this, you can extend your associations using the same scopes. Let's define a second class:
+
+  class Person < ActiveRecord::Base
+    has_many :pets, :extend => Pet::AssociationMethods
+    scope_out :women, :conditions => ["people.sex = ?", "F"]
+  end
+  
+  class Pet < ActiveRecord::Base
+    belongs_to :person
+    scope_out :cats, :conditions => ["pets.type = ?", "Feline"]
+  end
+  
+  woman = Person.find_women(:first)
+  her_pets = woman.pets
+  her_cats = woman.pets.cats
+  
+  # cats is cached on the association, so this doesn't cause another call to the database
+  # unless you do woman.pets.cats(:reload)
+  puts "Cat Lady!" if woman.pets.cats.length > 4
+
+==Dynamic Finders
+scope_out extends ActiveRecord::Base#method_missing to capture dynamic, scope-based finders.
+
+  female_centurions = Person.find_all_women_by_age(100)
+  scruffy = Pet.find_cats_by_name('Scruffy')
+
+==Flexible Syntax
+All of the following define the same scope:
+
+  class Ticket
+    scope_out :active
+    scope_out :active, :field => 'active', :value => true
+    scope_out :active, :conditions => ["active = ?", true]
+    scope_out :active, :conditions => {:active => true} # rails >= 1.2
+  end
+  
+Note: the :field, :value syntax will be deprecated in the near future in favor of the :conditions hash.
+  
+==Dynamic Conditions
+If you want to use a dynamic condition (which will be evaluated each time the scope is called), you can pass the options hash as a block.
+
+  class Person < ActiveRecord::Base
+    scope_out :adults do
+      {:conditions => ['people.birthdate < ?', 18.years.ago],
+       :order => 'people.birthdate asc' }
+    end
+  end

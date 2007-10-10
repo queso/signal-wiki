@@ -1,17 +1,17 @@
 # == Schema Information
-# Schema version: 8
+# Schema version: 10
 #
 # Table name: pages
 #
-#  id         :integer       not null, primary key
-#  title      :string(255)   
-#  body       :text          
-#  user_id    :integer       
-#  permalink  :string(255)   
-#  created_at :datetime      
-#  updated_at :datetime      
-#  private    :boolean       
-#  version    :integer       
+#  id           :integer       not null, primary key
+#  title        :string(255)   
+#  body         :text          
+#  user_id      :integer       
+#  permalink    :string(255)   
+#  created_at   :datetime      
+#  updated_at   :datetime      
+#  private_page :boolean       
+#  version      :integer       
 #
 
 class Page < ActiveRecord::Base

@@ -46,6 +46,7 @@ class PagesController < ApplicationController
   # GET /pages/new.xml
   def new
     @page = Page.new(:title => session[:new_title].to_s.gsub("-", " ").capitalize, :permalink => session[:new_title])
+    @attachments = Attachment.find_parent(:all)
     @button_text = "Add this page"
     respond_to do |format|
       format.html # new.html.erb
@@ -56,6 +57,7 @@ class PagesController < ApplicationController
   # GET /pages/1/edit
   def edit
     @page = Page.find_by_permalink(params[:id])
+    @attachments = Attachment.find_parent(:all)
     @button_text = "Save this version"
   end
 
