@@ -1,4 +1,10 @@
 	  <ul id="nav">
+		<li id="search" style="display:none;">  
+		<% form_tag search_pages_url, :method => 'get' do -%>
+	       <%= text_field_tag :query, params[:query], :size => 15, :id => :search_box -%>
+	    <% end -%>
+		</li>
+		<li><%= link_to_function "search", "$('search').toggle(); $('search_box').focus();" %></li>
 		<% if logged_in? -%>
 			<% if current_user.admin? -%>
 			<li><%= link_to "settings", site_path %></li>

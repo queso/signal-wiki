@@ -3,7 +3,7 @@ ActionController::Routing::Routes.draw do |map|
   map.resource :session
   map.resource :site, :member => {:expire_cache => :get, :mark_all_private => :get}
   map.resources :users 
-  map.resources :pages, :member => {:revision => :get, :rollback => :get} 
+  map.resources :pages, :member => {:revision => :get, :rollback => :get}, :collection => {:search => :get}
 
   map.login  '/login',  :controller => 'sessions', :action => 'new'
   map.logout '/logout', :controller => 'sessions', :action => 'destroy'

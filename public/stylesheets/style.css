@@ -60,7 +60,7 @@ a {
 }
 
 #header ul#nav li {
-	font-family:'Lucida Grande',Verdana,Arial,Helvetica,sans-serif;
+	font-family:Helvetica,'Lucida Grande',Verdana,Arial,sans-serif;
 	font-size:0.75em;
 	display: inline;
 	padding: 0 .5em;
@@ -147,5 +147,13 @@ a.small_link {
 }
 
 #users a {
+	display: inline;
+}
+
+/******************************************************************
+  Search layouts
+******************************************************************/
+
+form {
 	display: inline;
 }

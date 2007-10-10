@@ -107,6 +107,15 @@ class PagesController < ApplicationController
     end
   end
 
+  def search
+    @pages = Page.find_with_index("#{params[:query]}")
+    respond_to do |format|
+      format.html
+      format.xml
+      format.js
+    end
+  end
+
   # DELETE /pages/1
   # DELETE /pages/1.xml
   def destroy

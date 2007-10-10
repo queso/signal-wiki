@@ -1,0 +1,10 @@
+<h1>Search results</h1>
+
+
+<ul id="search_results">
+<% for page in @pages %>
+	<li><%= link_to page.title, page %></li>
+<% end %>
+</ul>
+
+

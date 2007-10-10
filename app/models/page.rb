@@ -18,6 +18,7 @@ class Page < ActiveRecord::Base
   belongs_to :user
   acts_as_versioned
   attr_accessor :ip, :agent, :referrer
+  acts_as_indexed :fields => [:title, :body, :author]
   
   before_save :set_permalink
  
@@ -49,6 +50,10 @@ class Page < ActiveRecord::Base
   
   def to_param
     self.permalink
+  end
+  
+  def author
+    (user && user.login) ? user.login.to_s.capitalize : "Anonymous"
   end
   
   def self.find_all_by_wiki_word(wiki_word)
