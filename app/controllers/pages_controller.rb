@@ -102,6 +102,7 @@ class PagesController < ApplicationController
   def rollback
     @page = Page.find_by_permalink(params[:id])
     @page.revert_to!(params[:version])
+    expire_page("/#{@page.permalink}")
     respond_to do |format|
       #flash[:notice] = "#{@page.title} was successfully rolled back to revision #{params[:version]}"
       format.html { redirect_to(wiki_page_url(@page)) }
