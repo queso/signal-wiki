@@ -22,6 +22,7 @@ class Attachment < ActiveRecord::Base
   scope_out :parent, :conditions => ["parent_id IS ?", nil]
   
   has_attachment :storage => :file_system,
-    :thumbnails => { :thumb => [50, 50], :small => "100x100>", :large => "400x400>"}
+    :thumbnails => { :thumb => [50, 50], :small => "100x100>", :large => "400x400>"},
+    :processor => :rmagick
   
 end
