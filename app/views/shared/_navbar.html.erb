@@ -12,6 +12,7 @@
 			<li><%= link_to "logout", logout_path %></li>
 		<% else -%>
 			<li><%= link_to "login", login_path %></li>
+			<li><%= link_to "signup", new_user_path %></li>
 		<% end -%>
 		<li><%= link_to "users", users_path %></li>
 	  </ul>
