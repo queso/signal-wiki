@@ -152,14 +152,31 @@ class TestController < ActionController::Base
     end
   end
 
+  def default_render
+    if @alternate_default_render
+      @alternate_default_render.call
+    else
+      render
+    end
+  end
+
+  def render_alternate_default
+    # For this test, the method "default_render" is overridden:
+    @alternate_default_render = lambda {
+	render :update do |page|
+	  page.replace :foo, :partial => 'partial'
+	end
+      }
+  end
+
   def rescue_action(e) raise end
 
   private
     def determine_layout
       case action_name
-        when "layout_test":         "layouts/standard"
-        when "builder_layout_test": "layouts/builder"
-        when "render_symbol_json":  "layouts/standard"  # to make sure layouts don't interfere
+        when "layout_test";         "layouts/standard"
+        when "builder_layout_test"; "layouts/builder"
+        when "render_symbol_json";  "layouts/standard"  # to make sure layouts don't interfere
       end
     end
 end
@@ -411,6 +428,11 @@ class RenderTest < Test::Unit::TestCase
   def test_should_render_js_partial
     xhr :get, :partial, :format => 'js'
     assert_equal 'partial js', @response.body
+  end
+
+  def test_should_render_with_alternate_default_render
+    xhr :get, :render_alternate_default
+    assert_equal %(Element.replace("foo", "partial html");), @response.body
   end
 
   protected

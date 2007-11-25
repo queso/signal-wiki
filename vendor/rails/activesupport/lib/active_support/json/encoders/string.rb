@@ -3,22 +3,24 @@ module ActiveSupport
     module Encoding
       ESCAPED_CHARS = {
         "\010" =>  '\b',
-        "\f" =>    '\f',
-        "\n" =>    '\n',
-        "\r" =>    '\r',
-        "\t" =>    '\t',
-        '"' =>     '\"',
-        '\\' =>    '\\\\',
-        ">" =>     '\076',
-        '<' =>     '\074'
+        "\f"   =>  '\f',
+        "\n"   =>  '\n',
+        "\r"   =>  '\r',
+        "\t"   =>  '\t',
+        '"'    =>  '\"',
+        '\\'   =>  '\\\\',
+        '>'    =>  '\u003E',
+        '<'    =>  '\u003C',
+        '&'    =>  '\u0026',
+        '/'    =>  '\\/'
       }
     end
   end
 end
 
 class String
-  def to_json #:nodoc:
-    '"' + gsub(/[\010\f\n\r\t"\\><]/) { |s|
+  def to_json(options = nil) #:nodoc:
+    '"' + gsub(/[\010\f\n\r\t"\\><&\/]/) { |s|
       ActiveSupport::JSON::Encoding::ESCAPED_CHARS[s]
     }.gsub(/([\xC0-\xDF][\x80-\xBF]|
              [\xE0-\xEF][\x80-\xBF]{2}|

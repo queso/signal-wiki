@@ -143,7 +143,7 @@ module ActiveRecord
   #     before_destroy 'self.class.delete_all "parent_id = #{id}"'
   #   end
   #
-  # Notice that single plings (') are used so the <tt>#{id}</tt> part isn't evaluated until the callback is triggered. Also note that these
+  # Notice that single quotes (') are used so the <tt>#{id}</tt> part isn't evaluated until the callback is triggered. Also note that these
   # inline callbacks can be stacked just like the regular ones:
   #
   #   class Topic < ActiveRecord::Base
@@ -161,7 +161,7 @@ module ActiveRecord
   # == <tt>before_validation*</tt> returning statements
   #
   # If the returning value of a +before_validation+ callback can be evaluated to +false+, the process will be aborted and <tt>Base#save</tt> will return +false+.
-  # If <tt>Base#save!</tt> is called it will raise a +RecordNotSave+ exception.
+  # If <tt>Base#save!</tt> is called it will raise a +RecordNotSaved+ exception.
   # Nothing will be appended to the errors object.
   #
   # == Cancelling callbacks

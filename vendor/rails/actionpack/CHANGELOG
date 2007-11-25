@@ -1,3 +1,111 @@
+*SVN*
+
+* Make sure that cookie sessions use a secret that is at least 30 chars in length. [Koz]
+
+* Fixed that partial rendering should look at the type of the first render to determine its own type if no other clues are available (like when using text.plain.erb as the extension in AM) #10130 [java]
+
+* Fixed that has_many :through associations should render as collections too #9051 [mathie/danger]
+
+* Added :mouseover short-cut to AssetTagHelper#image_tag for doing easy image swaps #6893 [joost]
+
+* Fixed handling of non-domain hosts #9479 [purp]
+
+* Fix syntax error in documentation example for cycle method. Closes #8735 [foca]
+
+* Document :with option for link_to_remote. Closes #8765 [ryanb]
+
+* Document :minute_step option for time_select. Closes #8814 [brupm]
+
+* Explain how to use the :href option for link_to_remote to degrade gracefully in the absence of JavaScript. Closes #8911 [vlad]
+
+* Disambiguate :size option for text area tag. Closes #8955 [redbeard]
+
+* Fix broken tag in assert_tag documentation. Closes #9037 [mfazekas]
+
+* Add documentation for route conditions. Closes #9041 [innu, manfred]
+
+* Fix typo left over from previous typo fix in url helper. Closes #9414 [Henrik N]
+
+* Fixed that ActionController::CgiRequest#host_with_port() should handle standard port #10082 [moro]
+
+* Update Prototype to 1.6.0 and script.aculo.us to 1.8.0.  [sam, madrobby]
+
+* Expose the cookie jar as a helper method (before the view would just get the raw cookie hash) [DHH]
+
+* Integration tests: get_ and post_via_redirect take a headers hash.  #9130 [simonjefford]
+
+* Simplfy #view_paths implementation.  ActionView templates get the exact object, not a dup.  [Rick]
+
+* Update tests for ActiveSupport's JSON escaping change.  [rick]
+
+* FormHelper's auto_index should use #to_param instead of #id_before_type_cast.  Closes #9994 [mattly]
+
+* Doc typo fixes for ActiveRecordHelper. Closes #9973 [mikong]
+
+* Make example parameters in restful routing docs idiomatic. Closes #9993 [danger]
+
+* Make documentation comment for mime responders match documentation example.  Closes #9357 [yon]
+
+* Introduce a new test case class for functional tests.  ActionController::TestCase. [Koz]
+
+* Fix incorrect path in helper rdoc. Closes #9926 [viktor tron]
+
+* Partials also set 'object' to the default partial variable.  #8823 [Nick Retallack, Jeremy Kemper]
+
+* Request profiler.  [Jeremy Kemper]
+    $ cat login_session.rb
+    get_with_redirect '/'
+    say "GET / => #{path}"
+    post_with_redirect '/sessions', :username => 'john', :password => 'doe'
+    say "POST /sessions => #{path}"
+    $ ./script/performance/request -n 10 login_session.rb
+
+* Disabled checkboxes don't submit a form value.  #9301 [vladr, robinjfisher]
+
+* Added tests for options to ActiveRecordHelper#form. Closes #7213 [richcollins, mikong, mislav]
+
+* Changed before_filter halting to happen automatically on render or redirect but no longer on simply returning false [DHH]
+
+* Ensure that cookies handle array values correctly.  Closes #9937 [queso]
+
+* Make sure resource routes don't clash with internal helpers like javascript_path, image_path etc.  #9928 [gbuesing]
+
+* caches_page uses a single after_filter instead of one per action.  #9891 [lifofifo]
+
+* Update Prototype to 1.6.0_rc1 and script.aculo.us to 1.8.0 preview 0.  [sam, madrobby]
+
+* Dispatcher: fix that to_prepare should only run once in production.  #9889 [Nathaniel Talbott]
+
+* Memcached sessions: add session data on initialization; don't silently discard exceptions; add unit tests.  #9823 [kamk]
+
+* error_messages_for also takes :message and :header_message options which defaults to the old "There were problems with the following fields:" and "<count> errors prohibited this <object_name> from being saved".  #8270 [rmm5t, zach-inglis-lt3]
+
+* Make sure that custom inflections are picked up by map.resources.  #9815 [mislav]
+
+* Changed SanitizeHelper#sanitize to only allow the custom attributes and tags when specified in the call [DHH]
+
+* Extracted sanitization methods from TextHelper to SanitizeHelper [DHH]
+
+* rescue_from accepts :with => lambda { |exception| ... } or a normal block.  #9827 [lifofifo]
+
+* Add :status to redirect_to allowing users to choose their own response code without manually setting headers. #8297 [codahale, chasgrundy]
+
+* Add link_to :back which uses your referrer with a fallback to a javascript link. #7366 [eventualbuddha, tarmo]
+
+* error_messages_for and friends also work with local variables.  #9699 [Frederick Cheung]
+
+* Fix url_for, redirect_to, etc. with :controller => :symbol instead of 'string'.  #8562, #9525 [Justin Lynn, Tarmo Tänav, shoe]
+
+* Use #require_library_or_gem to load the memcache library for the MemCache session and fragment cache stores.  Closes #8662. [Rick]
+
+* Move ActionController::Routing.optimise_named_routes to ActionController::Base.optimise_named_routes.  Now you can set it in the config. [Rick]
+
+  config.action_controller.optimise_named_routes = false
+
+* ActionController::Routing::DynamicSegment#interpolation_chunk should call #to_s on all values before calling URI.escape.  [Rick]
+
+* Only accept session ids from cookies, prevents session fixation attacks.  [bradediger] 
+
 *2.0.0 [Preview Release]* (September 29th, 2007) [Includes duplicates of changes from 1.12.2 - 1.13.3]
 
 * Fixed that render template did not honor exempt_from_layout #9698 [pezra]
@@ -35,7 +143,7 @@
 
 * Fixed that setting the :host option in url_for would automatically turn off :only_path (since :host would otherwise not be shown) #9586 [Bounga]
 
-* Added FormHelper#label #8641 [jcoglan]
+* Added FormHelper#label.  #8641, #9850 [jcoglan, jarkko]
 
 * Added AtomFeedHelper (slightly improved from the atom_feed_helper plugin) [DHH]
 
@@ -77,6 +185,8 @@
 * Fixed that default layouts did not take the format into account #9564 [lifofifo]
 
 * Fixed optimized route segment escaping.  #9562 [wildchild, Jeremy Kemper]
+
+* Added block acceptance to JavaScriptHelper#javascript_tag.  #7527 [Bob Silva, Tarmo Tänav, rmm5t]
 
 * root_path returns '/' not ''.  #9563 [lifofifo]
 

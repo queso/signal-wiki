@@ -1,5 +1,6 @@
 require "#{File.dirname(__FILE__)}/../abstract_unit"
 require "#{File.dirname(__FILE__)}/fake_controllers"
+require "action_controller/test_case"
 
 class TestTest < Test::Unit::TestCase
   class TestController < ActionController::Base
@@ -23,6 +24,10 @@ class TestTest < Test::Unit::TestCase
 
     def test_uri
       render :text => request.request_uri
+    end
+
+    def test_query_string
+      render :text => request.query_string
     end
 
     def test_html_output
@@ -104,7 +109,7 @@ XML
 
   def test_raw_post_handling
     params = {:page => {:name => 'page name'}, 'some key' => 123}
-    get :render_raw_post, params.dup
+    post :render_raw_post, params.dup
 
     assert_equal params.to_query, @response.body
   end
@@ -112,7 +117,7 @@ XML
   def test_body_stream
     params = { :page => { :name => 'page name' }, 'some key' => 123 }
 
-    get :render_body, params.dup
+    post :render_body, params.dup
 
     assert_equal params.to_query, @response.body
   end
@@ -141,6 +146,17 @@ XML
     @request.set_REQUEST_URI "/explicit/uri"
     process :test_uri, :id => 7
     assert_equal "/explicit/uri", @response.body
+  end
+
+  def test_process_with_query_string
+    process :test_query_string, :q => 'test'
+    assert_equal "q=test", @response.body
+  end
+
+  def test_process_with_query_string_with_explicit_uri
+    @request.set_REQUEST_URI "/explicit/uri?q=test?extra=question"
+    process :test_query_string
+    assert_equal "q=test?extra=question", @response.body
   end
 
   def test_multiple_calls
@@ -565,3 +581,34 @@ class CleanBacktraceTest < Test::Unit::TestCase
     assert !caught.backtrace.empty?
   end
 end
+
+class InferringClassNameTest < Test::Unit::TestCase
+  def test_determine_controller_class
+    assert_equal ContentController, determine_class("ContentControllerTest")
+  end
+
+  def test_determine_controller_class_with_nonsense_name
+    assert_raises ActionController::NonInferrableControllerError do
+      determine_class("HelloGoodBye")
+    end
+  end
+
+  def test_determine_controller_class_with_sensible_name_where_no_controller_exists
+    assert_raises ActionController::NonInferrableControllerError do
+      determine_class("NoControllerWithThisNameTest")
+    end
+  end
+
+  private
+    def determine_class(name)
+      ActionController::TestCase.determine_default_controller_class(name)
+    end
+end
+
+class CrazyNameTest < ActionController::TestCase
+  tests ContentController
+  def test_controller_class_can_be_set_manually_not_just_inferred
+    assert_equal ContentController, self.class.controller_class
+  end
+end
+

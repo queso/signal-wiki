@@ -70,6 +70,12 @@ class AssetTagHelperTest < Test::Unit::TestCase
     %(javascript_path("/super/xmlhr.js")) => %(/super/xmlhr.js)
   }
 
+  PathToJavascriptToTag = {
+    %(path_to_javascript("xmlhr")) => %(/javascripts/xmlhr.js),
+    %(path_to_javascript("super/xmlhr")) => %(/javascripts/super/xmlhr.js),
+    %(path_to_javascript("/super/xmlhr.js")) => %(/super/xmlhr.js)
+  }
+
   JavascriptIncludeToTag = {
     %(javascript_include_tag("xmlhr")) => %(<script src="/javascripts/xmlhr.js" type="text/javascript"></script>),
     %(javascript_include_tag("xmlhr.js")) => %(<script src="/javascripts/xmlhr.js" type="text/javascript"></script>),
@@ -86,6 +92,13 @@ class AssetTagHelperTest < Test::Unit::TestCase
     %(stylesheet_path("style.css")) => %(/stylesheets/style.css),
     %(stylesheet_path('dir/file')) => %(/stylesheets/dir/file.css),
     %(stylesheet_path('/dir/file.rcss')) => %(/dir/file.rcss)
+  }
+
+  PathToStyleToTag = {
+    %(path_to_stylesheet("style")) => %(/stylesheets/style.css),
+    %(path_to_stylesheet("style.css")) => %(/stylesheets/style.css),
+    %(path_to_stylesheet('dir/file')) => %(/stylesheets/dir/file.css),
+    %(path_to_stylesheet('/dir/file.rcss')) => %(/dir/file.rcss)
   }
 
   StyleLinkToTag = {
@@ -107,6 +120,13 @@ class AssetTagHelperTest < Test::Unit::TestCase
     %(image_path("/dir/xml.png")) => %(/dir/xml.png)    
   }
 
+  PathToImageToTag = {
+    %(path_to_image("xml"))          => %(/images/xml),
+    %(path_to_image("xml.png"))      => %(/images/xml.png),
+    %(path_to_image("dir/xml.png"))  => %(/images/dir/xml.png),
+    %(path_to_image("/dir/xml.png")) => %(/dir/xml.png)
+  }
+
   ImageLinkToTag = {
     %(image_tag("xml.png")) => %(<img alt="Xml" src="/images/xml.png" />),
     %(image_tag("rss.gif", :alt => "rss syndication")) => %(<img alt="rss syndication" src="/images/rss.gif" />),
@@ -115,7 +135,10 @@ class AssetTagHelperTest < Test::Unit::TestCase
     %(image_tag("error.png", "size" => "45")) => %(<img alt="Error" src="/images/error.png" />),
     %(image_tag("error.png", "size" => "45 x 70")) => %(<img alt="Error" src="/images/error.png" />),
     %(image_tag("error.png", "size" => "x")) => %(<img alt="Error" src="/images/error.png" />),
-    %(image_tag("http://www.rubyonrails.com/images/rails.png")) => %(<img alt="Rails" src="http://www.rubyonrails.com/images/rails.png" />)
+    %(image_tag("http://www.rubyonrails.com/images/rails.png")) => %(<img alt="Rails" src="http://www.rubyonrails.com/images/rails.png" />),
+    %(image_tag("http://www.rubyonrails.com/images/rails.png")) => %(<img alt="Rails" src="http://www.rubyonrails.com/images/rails.png" />),
+    %(image_tag("mouse.png", :mouseover => "/images/mouse_over.png")) => %(<img alt="Mouse" onmouseover="this.src='/images/mouse_over.png'" onmouseout="this.src='/images/mouse.png'" src="/images/mouse.png" />),
+    %(image_tag("mouse.png", :mouseover => image_path("mouse_over.png"))) => %(<img alt="Mouse" onmouseover="this.src='/images/mouse_over.png'" onmouseout="this.src='/images/mouse.png'" src="/images/mouse.png" />)
   }
 
 
@@ -125,6 +148,10 @@ class AssetTagHelperTest < Test::Unit::TestCase
 
   def test_javascript_path
     JavascriptPathToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
+  end
+
+  def test_path_to_javascript_alias_for_javascript_path
+    PathToJavascriptToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
   end
 
   def test_javascript_include_tag
@@ -149,6 +176,10 @@ class AssetTagHelperTest < Test::Unit::TestCase
     StylePathToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
   end
 
+  def test_path_to_stylesheet_alias_for_stylesheet_path
+    PathToStyleToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
+  end
+
   def test_stylesheet_link_tag
     ENV["RAILS_ASSET_ID"] = ""
     StyleLinkToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
@@ -158,6 +189,10 @@ class AssetTagHelperTest < Test::Unit::TestCase
     ImagePathToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
   end
   
+  def test_path_to_image_alias_for_image_path
+    PathToImageToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
+  end
+
   def test_image_tag
     ImageLinkToTag.each { |method, tag| assert_dom_equal(tag, eval(method)) }
   end

@@ -90,6 +90,7 @@ module ActionView
       def javascript_path(source)
         compute_public_path(source, 'javascripts', 'js')
       end
+      alias_method :path_to_javascript, :javascript_path # aliased to avoid conflicts with a javascript_path named route
 
       JAVASCRIPT_DEFAULT_SOURCES = ['prototype', 'effects', 'dragdrop', 'controls'] unless const_defined?(:JAVASCRIPT_DEFAULT_SOURCES)
       @@javascript_default_sources = JAVASCRIPT_DEFAULT_SOURCES.dup
@@ -190,11 +191,11 @@ module ActionView
           end
 
           content_tag("script", "", {
-            "type" => Mime::JS, "src" => javascript_path(joined_javascript_name)
+            "type" => Mime::JS, "src" => path_to_javascript(joined_javascript_name)
           }.merge(options))
         else
           expand_javascript_sources(sources).collect do |source|
-            content_tag("script", "", { "type" => Mime::JS, "src" => javascript_path(source) }.merge(options))
+            content_tag("script", "", { "type" => Mime::JS, "src" => path_to_javascript(source) }.merge(options))
           end.join("\n")
         end
       end
@@ -225,6 +226,7 @@ module ActionView
       def stylesheet_path(source)
         compute_public_path(source, 'stylesheets', 'css')
       end
+      alias_method :path_to_stylesheet, :stylesheet_path # aliased to avoid conflicts with a stylesheet_path named route
 
       # Returns a stylesheet link tag for the sources specified as arguments. If
       # you don't specify an extension, .css will be appended automatically.
@@ -300,14 +302,14 @@ module ActionView
 
           tag("link", {
             "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen",
-            "href" => html_escape(stylesheet_path(joined_stylesheet_name))
+            "href" => html_escape(path_to_stylesheet(joined_stylesheet_name))
           }.merge(options), false, false)
         else
           options.delete("cache")
 
           expand_stylesheet_sources(sources).collect do |source|
             tag("link", {
-              "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen", "href" => html_escape(stylesheet_path(source))
+              "rel" => "stylesheet", "type" => Mime::CSS, "media" => "screen", "href" => html_escape(path_to_stylesheet(source))
             }.merge(options), false, false)
           end.join("\n")
         end
@@ -326,19 +328,23 @@ module ActionView
       def image_path(source)
         compute_public_path(source, 'images')
       end
+      alias_method :path_to_image, :image_path # aliased to avoid conflicts with an image_path named route
 
       # Returns an html image tag for the +source+. The +source+ can be a full
       # path or a file that exists in your public images directory.
       #
       # ==== Options
       # You can add HTML attributes using the +options+. The +options+ supports
-      # two additional keys for convienence and conformance:
+      # three additional keys for convienence and conformance:
       #
       # * <tt>:alt</tt>  - If no alt text is given, the file name part of the
       #   +source+ is used (capitalized and without the extension)
       # * <tt>:size</tt> - Supplied as "{Width}x{Height}", so "30x45" becomes
       #   width="30" and height="45". <tt>:size</tt> will be ignored if the
       #   value is not in the correct format.
+      # * <tt>:mouseover</tt> - Set an alternate image to be used when the onmouseover
+      #   event is fired, and sets the original image to be replaced onmouseout.
+      #   This can be used to implement an easy image toggle that fires on onmouseover.
       #
       # ==== Examples
       #  image_tag("icon")  # =>
@@ -353,15 +359,23 @@ module ActionView
       #    <img alt="Icon" height="32" src="/icons/icon.gif" width="32" />
       #  image_tag("/icons/icon.gif", :class => "menu_icon") # =>
       #    <img alt="Icon" class="menu_icon" src="/icons/icon.gif" />
+      #  image_tag("mouse.png", :mouseover => "/images/mouse_over.png") # => 
+      #    <img src="/images/mouse.png" onmouseover="this.src='/images/mouse_over.png'" onmouseout="this.src='/images/mouse.png'" alt="Mouse" />
+      #  image_tag("mouse.png", :mouseover => image_path("mouse_over.png")) # => 
+      #    <img src="/images/mouse.png" onmouseover="this.src='/images/mouse_over.png'" onmouseout="this.src='/images/mouse.png'" alt="Mouse" />
       def image_tag(source, options = {})
         options.symbolize_keys!
 
-        options[:src] = image_path(source)
+        options[:src] = path_to_image(source)
         options[:alt] ||= File.basename(options[:src], '.*').split('.').first.capitalize
 
-        if options[:size]
-          options[:width], options[:height] = options[:size].split("x") if options[:size] =~ %r{^\d+x\d+$}
-          options.delete(:size)
+        if size = options.delete(:size)
+          options[:width], options[:height] = size.split("x") if size =~ %r{^\d+x\d+$}
+        end
+
+        if mouseover = options.delete(:mouseover)
+          options[:onmouseover]	= "this.src='#{image_path(mouseover)}'"
+          options[:onmouseout]	= "this.src='#{image_path(options[:src])}'"
         end
 
         tag("img", options)
@@ -384,10 +398,18 @@ module ActionView
         # a single or wildcarded asset host, if configured, with the correct
         # request protocol.
         def compute_public_path(source, dir, ext = nil, include_host = true)
-          cache_key = [ @controller.request.protocol,
-                        ActionController::Base.asset_host,
-                        @controller.request.relative_url_root,
-                        dir, source, ext, include_host ].join
+          has_request = @controller.respond_to?(:request)
+
+          cache_key =
+            if has_request
+              [ @controller.request.protocol,
+                ActionController::Base.asset_host,
+                @controller.request.relative_url_root,
+                dir, source, ext, include_host ].join
+            else
+              [ ActionController::Base.asset_host,
+                dir, source, ext, include_host ].join
+            end
 
           ActionView::Base.computed_public_paths[cache_key] ||=
             begin
@@ -397,13 +419,15 @@ module ActionView
                 source
               else
                 source = "/#{dir}/#{source}" unless source[0] == ?/
-                source = "#{@controller.request.relative_url_root}#{source}"
+                if has_request
+                  source = "#{@controller.request.relative_url_root}#{source}"
+                end
                 rewrite_asset_path!(source)
 
                 if include_host
                   host = compute_asset_host(source)
 
-                  unless host.blank? or host =~ %r{^[-a-z]+://}
+                  if has_request && !host.blank? && host !~ %r{^[-a-z]+://}
                     host = "#{@controller.request.protocol}#{host}"
                   end
 

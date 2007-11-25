@@ -1,3 +1,49 @@
+*SVN*
+
+* RAILS_GEM_VERSION may be set to any valid gem version specifier.  #10057 [Chad Woolley, Chu Yeow]
+
+* Load config/preinitializer.rb, if present, before loading the environment.  #9943 [Chad Woolley]
+
+* FastCGI handler ignores unsupported signals like USR2 on Windows.  [Grzegorz Derebecki]
+
+* Only load ActionMailer::TestCase if ActionMailer is loaded.  Closes #10137 [defunkt]
+
+* Fixed that db:reset would use migrations instead of loading db/schema.rb [DHH]
+
+* Ensure the plugin loader only loads plugins once.  Closes #10102 [haruki_zaemon]
+
+* Refactor Plugin Loader.  Add plugin lib paths early, and add lots of tests.  Closes #9795 [lazyatom]
+
+* Added --skip-timestamps to generators that produce models #10036 [tpope]
+
+* Update Prototype to 1.6.0 and script.aculo.us to 1.8.0.  [sam, madrobby]
+
+* Added db:rollback to rollback the schema one version (or multiple as specified by STEP) [Jeffrey Allan Hardy]
+
+* Fix typo in test_helper. Closes #9925 [viktor tron]
+
+* Request profiler.  [Jeremy Kemper]
+
+* config/boot.rb correctly detects RAILS_GEM_VERSION.  #9834 [alexch, thewoolleyman]
+
+* Fixed incorrect migration number if script/generate executed outside of Rails root #7080 [jeremymcanally]
+
+* Update Prototype to 1.6.0_rc1 and script.aculo.us to 1.8.0 preview 0.  [sam, madrobby]
+
+* Generated fixtures use the actual primary key instead of id.  #4343 [Frederick Ros, Tarmo Tänav]
+
+* Extend the console +helper+ method to allow you to include custom helpers.  e.g:
+  >> helper :posts
+  >> helper.some_method_from_posts_helper(Post.find(1))
+
+* db:create works with remote databases whereas db:create:all only creates
+databases on localhost.  #9753 [Trevor Wennblom]
+
+* Removed calls to fixtures in generated tests as fixtures :all is now present by default in test_helper.rb [DHH]
+
+* Add --prefix option to script/server when using mongrel. [dacat]
+
+
 *2.0.0 [Preview Release]* (September 29th, 2007) [Includes duplicates of changes from 1.1.4 - 1.2.3]
 
 * Fixed that installing plugins from SVN repositories that use trunk/ will work #8188 [evan]

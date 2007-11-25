@@ -41,8 +41,8 @@ module ActionController #:nodoc:
       base.rescue_templates = Hash.new(DEFAULT_RESCUE_TEMPLATE)
       base.rescue_templates.update DEFAULT_RESCUE_TEMPLATES
 
-      base.class_inheritable_hash :rescue_handlers
-      base.rescue_handlers = {}
+      base.class_inheritable_array :rescue_handlers
+      base.rescue_handlers = []
 
       base.extend(ClassMethods)
       base.class_eval do
@@ -50,17 +50,31 @@ module ActionController #:nodoc:
       end
     end
 
-    module ClassMethods #:nodoc:
-      def process_with_exception(request, response, exception)
+    module ClassMethods
+      def process_with_exception(request, response, exception) #:nodoc:
         new.process(request, response, :rescue_action, exception)
       end
 
-      # Rescue exceptions raised in controller actions by passing at least one exception class and a :with option that contains the name of the method to be called to respond to the exception.
-      # Handler methods that take one argument will be called with the exception, so that the exception can be inspected when dealing with it.
+      # Rescue exceptions raised in controller actions.
+      #
+      # <tt>rescue_from</tt> receives a series of exception classes or class
+      # names, and a trailing :with option with the name of a method or a Proc
+      # object to be called to handle them. Alternatively a block can be given.
+      #
+      # Handlers that take one argument will be called with the exception, so
+      # that the exception can be inspected when dealing with it.
+      #
+      # Handlers are inherited. They are searched from right to left, from
+      # bottom to top, and up the hierarchy. The handler of the first class for
+      # which exception.is_a?(klass) holds true is the one invoked, if any.
       #
       # class ApplicationController < ActionController::Base
       #   rescue_from User::NotAuthorized, :with => :deny_access # self defined exception
       #   rescue_from ActiveRecord::RecordInvalid, :with => :show_errors
+      #
+      #   rescue_from 'MyAppError::Base' do |exception|
+      #     render :xml => exception, :status => 500
+      #   end
       #
       #   protected
       #     def deny_access
@@ -71,14 +85,24 @@ module ActionController #:nodoc:
       #       exception.record.new_record? ? ...
       #     end
       # end
-      def rescue_from(*klasses)
+      def rescue_from(*klasses, &block)
         options = klasses.extract_options!
-        unless options.has_key?(:with) # allow nil
-          raise ArgumentError, "Need a handler. Supply an options hash that has a :with key as the last argument."
+        unless options.has_key?(:with)
+          block_given? ? options[:with] = block : raise(ArgumentError, "Need a handler. Supply an options hash that has a :with key as the last argument.")
         end
 
         klasses.each do |klass|
-          rescue_handlers[klass.name] = options[:with]
+          key = if klass.is_a?(Class) && klass <= Exception
+            klass.name
+          elsif klass.is_a?(String)
+            klass
+          else
+            raise(ArgumentError, "#{klass} is neither an Exception nor a String")
+          end
+
+          # Order is important, we put the pair at the end. When dealing with an
+          # exception we will follow the documented order going from right to left.
+          rescue_handlers << [key, options[:with]]
         end
       end
     end
@@ -150,7 +174,7 @@ module ActionController #:nodoc:
         add_variables_to_assigns
         @template.instance_variable_set("@exception", exception)
         @template.instance_variable_set("@rescues_path", File.dirname(rescues_path("stub")))
-        @template.send(:assign_variables_from_controller)
+        @template.send!(:assign_variables_from_controller)
 
         @template.instance_variable_set("@contents", @template.render_file(template_path_for_local_rescue(exception), false))
 
@@ -192,8 +216,32 @@ module ActionController #:nodoc:
       end
 
       def handler_for_rescue(exception)
-        if handler = rescue_handlers[exception.class.name]
+        # We go from right to left because pairs are pushed onto rescue_handlers
+        # as rescue_from declarations are found.
+        _, handler = *rescue_handlers.reverse.detect do |klass_name, handler|
+          # The purpose of allowing strings in rescue_from is to support the
+          # declaration of handler associations for exception classes whose
+          # definition is yet unknown.
+          #
+          # Since this loop needs the constants it would be inconsistent to
+          # assume they should exist at this point. An early raised exception
+          # could trigger some other handler and the array could include
+          # precisely a string whose corresponding constant has not yet been
+          # seen. This is why we are tolerant to unkown constants.
+          #
+          # Note that this tolerance only matters if the exception was given as
+          # a string, otherwise a NameError will be raised by the interpreter
+          # itself when rescue_from CONSTANT is executed.
+          klass = self.class.const_get(klass_name) rescue nil
+          klass ||= klass_name.constantize rescue nil
+          exception.is_a?(klass) if klass
+        end
+
+        case handler
+        when Symbol
           method(handler)
+        when Proc
+          handler.bind(self)
         end
       end
 

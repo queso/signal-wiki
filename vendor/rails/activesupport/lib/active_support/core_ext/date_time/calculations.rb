@@ -5,6 +5,16 @@ module ActiveSupport #:nodoc:
     module DateTime #:nodoc:
       # Enables the use of time calculations within DateTime itself
       module Calculations
+        def self.included(base) #:nodoc:
+          base.extend ClassMethods
+        end
+
+        module ClassMethods
+          # DateTimes aren't aware of DST rules, so use a consistent non-DST offset when creating a DateTime with an offset in the local zone
+          def local_offset
+            ::Time.local(2007).utc_offset.to_r / 86400
+          end
+        end
 
         # Seconds since midnight: DateTime.now.seconds_since_midnight
         def seconds_since_midnight
@@ -28,10 +38,12 @@ module ActiveSupport #:nodoc:
         end
 
         # Uses Date to provide precise Time calculations for years, months, and days.  The +options+ parameter takes a hash with
-        # any of these keys: :months, :days, :years.
+        # any of these keys: :years, :months, :weeks, :days, :hours, :minutes, :seconds.
         def advance(options)
           d = to_date.advance(options)
-          change(options.merge(:year => d.year, :month => d.month, :day => d.day))
+          datetime_advanced_by_date = change(:year => d.year, :month => d.month, :day => d.day)
+          seconds_to_advance = (options[:seconds] || 0) + (options[:minutes] || 0) * 60 + (options[:hours] || 0) * 3600
+          seconds_to_advance == 0 ? datetime_advanced_by_date : datetime_advanced_by_date.since(seconds_to_advance)
         end
 
         # Returns a new DateTime representing the time a number of seconds ago

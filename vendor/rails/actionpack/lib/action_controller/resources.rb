@@ -28,10 +28,10 @@ module ActionController
   #   GET /posts/1
   #
   #   # A POST request on the Posts resource is asking for a Post to be created with the supplied details
-  #   POST /posts # with => { :title => "My Whizzy New Post", :body => "I've got a brand new combine harvester" }
+  #   POST /posts # with => { :post => { :title => "My Whizzy New Post", :body => "I've got a brand new combine harvester" } }
   #
   #   # A PUT request on a single Post resource is asking for a Post to be updated
-  #   PUT /posts # with => { :id => 1, :title => "Changed Whizzy Title" }
+  #   PUT /posts # with => { :id => 1, :post => { :title => "Changed Whizzy Title" } }
   #
   #   # A DELETE request on a single Post resource is asking for it to be deleted
   #   DELETE /posts # with => { :id => 1 }
@@ -513,15 +513,17 @@ module ActionController
         default_options = { :action => action.to_s }
         require_id = !resource.kind_of?(SingletonResource)
         case default_options[:action]
-          when "index", "new" : default_options.merge(add_conditions_for(resource.conditions, method || :get)).merge(resource.requirements)
-          when "create"       : default_options.merge(add_conditions_for(resource.conditions, method || :post)).merge(resource.requirements)
-          when "show", "edit" : default_options.merge(add_conditions_for(resource.conditions, method || :get)).merge(resource.requirements(require_id))
-          when "update"       : default_options.merge(add_conditions_for(resource.conditions, method || :put)).merge(resource.requirements(require_id))
-          when "destroy"      : default_options.merge(add_conditions_for(resource.conditions, method || :delete)).merge(resource.requirements(require_id))
+          when "index", "new"; default_options.merge(add_conditions_for(resource.conditions, method || :get)).merge(resource.requirements)
+          when "create";       default_options.merge(add_conditions_for(resource.conditions, method || :post)).merge(resource.requirements)
+          when "show", "edit"; default_options.merge(add_conditions_for(resource.conditions, method || :get)).merge(resource.requirements(require_id))
+          when "update";       default_options.merge(add_conditions_for(resource.conditions, method || :put)).merge(resource.requirements(require_id))
+          when "destroy";      default_options.merge(add_conditions_for(resource.conditions, method || :delete)).merge(resource.requirements(require_id))
           else                  default_options.merge(add_conditions_for(resource.conditions, method)).merge(resource.requirements)
         end
       end
   end
 end
 
-ActionController::Routing::RouteSet::Mapper.send :include, ActionController::Resources
+class ActionController::Routing::RouteSet::Mapper
+  include ActionController::Resources
+end

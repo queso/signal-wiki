@@ -6,10 +6,10 @@ module ActionController
     module ResponseAssertions
       # Asserts that the response is one of the following types:
       #
-      # * <tt>:success</tt>: Status code was 200
-      # * <tt>:redirect</tt>: Status code was in the 300-399 range
-      # * <tt>:missing</tt>: Status code was 404
-      # * <tt>:error</tt>:  Status code was in the 500-599 range
+      # * <tt>:success</tt>   - Status code was 200
+      # * <tt>:redirect</tt>  - Status code was in the 300-399 range
+      # * <tt>:missing</tt>   - Status code was 404
+      # * <tt>:error</tt>     - Status code was in the 500-599 range
       #
       # You can also pass an explicit status number like assert_response(501)
       # or its symbolic equivalent assert_response(:not_implemented).
@@ -69,6 +69,7 @@ module ActionController
               end
 
               if value.respond_to?(:[]) && value['controller']
+                value['controller'] = value['controller'].to_s
                 if key == :actual && value['controller'].first != '/' && !value['controller'].include?('/')
                   new_controller_path = ActionController::Routing.controller_relative_to(value['controller'], @controller.class.controller_path)
                   value['controller'] = new_controller_path if value['controller'] != new_controller_path && ActionController::Routing.possible_controllers.include?(new_controller_path)
@@ -78,9 +79,8 @@ module ActionController
               url[key] = value
             end
 
-            @response_diff = url[:expected].diff(url[:actual]) if url[:actual]
-            msg = build_message(message, "response is not a redirection to all of the options supplied (redirection is <?>), difference: <?>",
-                                url[:actual], @response_diff)
+            @response_diff = url[:actual].diff(url[:expected]) if url[:actual]
+            msg = build_message(message, "expected a redirect to <?>, found one to <?>, a difference of <?> ", url[:expected], url[:actual], @response_diff)
 
             assert_block(msg) do
               url[:expected].keys.all? do |k|

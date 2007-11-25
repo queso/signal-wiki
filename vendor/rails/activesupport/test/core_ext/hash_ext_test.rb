@@ -5,6 +5,7 @@ class HashExtTest < Test::Unit::TestCase
     @strings = { 'a' => 1, 'b' => 2 }
     @symbols = { :a  => 1, :b  => 2 }
     @mixed   = { :a  => 1, 'b' => 2 }
+    @fixnums = {  0  => 1,  1  => 2 }
   end
 
   def test_methods
@@ -31,6 +32,11 @@ class HashExtTest < Test::Unit::TestCase
     assert_equal @symbols, @mixed.dup.symbolize_keys!
 
     assert_raises(NoMethodError) { { [] => 1 }.symbolize_keys }
+  end
+
+  def test_symbolize_keys_preserves_fixnum_keys
+    assert_equal @fixnums, @fixnums.symbolize_keys
+    assert_equal @fixnums, @fixnums.dup.symbolize_keys!
   end
 
   def test_stringify_keys
@@ -63,9 +69,9 @@ class HashExtTest < Test::Unit::TestCase
 
     hashes.each do |name, hash|
       method_map.sort_by { |m| m.to_s }.each do |meth, expected|
-        assert_equal(expected, hash.send(meth, 'a'),
+        assert_equal(expected, hash.send!(meth, 'a'),
                      "Calling #{name}.#{meth} 'a'")
-        assert_equal(expected, hash.send(meth, :a),
+        assert_equal(expected, hash.send!(meth, :a),
                      "Calling #{name}.#{meth} :a")
       end
     end
@@ -330,13 +336,14 @@ class HashToXmlTest < Test::Unit::TestCase
   end
 
   def test_one_level_with_types
-    xml = { :name => "David", :street => "Paulina", :age => 26, :age_in_millis => 820497600000, :moved_on => Date.new(2005, 11, 15) }.to_xml(@xml_options)
+    xml = { :name => "David", :street => "Paulina", :age => 26, :age_in_millis => 820497600000, :moved_on => Date.new(2005, 11, 15), :resident => :yes }.to_xml(@xml_options)
     assert_equal "<person>", xml.first(8)
     assert xml.include?(%(<street>Paulina</street>))
     assert xml.include?(%(<name>David</name>))
     assert xml.include?(%(<age type="integer">26</age>))
     assert xml.include?(%(<age-in-millis type="integer">820497600000</age-in-millis>))
     assert xml.include?(%(<moved-on type="date">2005-11-15</moved-on>))
+    assert xml.include?(%(<resident type="symbol">yes</resident>))
   end
 
   def test_one_level_with_nils
@@ -410,6 +417,7 @@ class HashToXmlTest < Test::Unit::TestCase
         <parent-id></parent-id>
         <ad-revenue type="decimal">1.5</ad-revenue>
         <optimum-viewing-angle type="float">135</optimum-viewing-angle>
+        <resident type="symbol">yes</resident>
       </topic>
     EOT
 
@@ -426,7 +434,8 @@ class HashToXmlTest < Test::Unit::TestCase
       :author_email_address => "david@loudthinking.com",
       :parent_id => nil,
       :ad_revenue => BigDecimal("1.50"),
-      :optimum_viewing_angle => 135.0
+      :optimum_viewing_angle => 135.0,
+      :resident => :yes
     }.stringify_keys
 
     assert_equal expected_topic_hash, Hash.from_xml(topic_xml)["topic"]
@@ -640,7 +649,7 @@ class HashToXmlTest < Test::Unit::TestCase
   
   def test_empty_string_works_for_typecast_xml_value    
     assert_nothing_raised do
-      Hash.send(:typecast_xml_value, "")
+      Hash.send!(:typecast_xml_value, "")
     end
   end
   

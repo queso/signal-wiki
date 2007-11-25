@@ -160,6 +160,11 @@ class FinderTest < Test::Unit::TestCase
     assert_raises(ActiveRecord::RecordNotFound) { Topic.find(1, :conditions => { :approved => true }) }
   end
 
+  def test_find_on_hash_conditions_with_explicit_table_name
+    assert Topic.find(1, :conditions => { 'topics.approved' => false })
+    assert_raises(ActiveRecord::RecordNotFound) { Topic.find(1, :conditions => { 'topics.approved' => true }) }
+  end
+
   def test_find_on_association_proxy_conditions
     assert_equal [1, 2, 3, 5, 6, 7, 8, 9, 10], Comment.find_all_by_post_id(authors(:david).posts).map(&:id).sort
   end
@@ -469,6 +474,22 @@ class FinderTest < Test::Unit::TestCase
     assert_equal "38signals", sig38.name
     assert sig38.new_record?
   end
+  
+  def test_find_or_initialize_from_one_attribute_should_set_attribute_even_when_protected
+    c = Company.find_or_initialize_by_name_and_rating("Fortune 1000", 1000)
+    assert_equal "Fortune 1000", c.name
+    assert_equal 1000, c.rating
+    assert c.valid?
+    assert c.new_record?    
+  end
+
+  def test_find_or_create_from_one_attribute_should_set_attribute_even_when_protected
+    c = Company.find_or_create_by_name_and_rating("Fortune 1000", 1000)
+    assert_equal "Fortune 1000", c.name
+    assert_equal 1000, c.rating
+    assert c.valid?
+    assert !c.new_record?    
+  end
 
   def test_dynamic_find_or_initialize_from_one_attribute_caches_method
     class << Company; self; end.send(:remove_method, :find_or_initialize_by_name) if Company.respond_to?(:find_or_initialize_by_name)    
@@ -605,9 +626,9 @@ class FinderTest < Test::Unit::TestCase
       [["1", nil, nil, "37signals"],
        ["2", "1", "2", "Summit"],
        ["3", "1", "1", "Microsoft"]],
-      Company.connection.select_rows("SELECT id, firm_id, client_of, name FROM companies ORDER BY id LIMIT 3"))
+      Company.connection.select_rows("SELECT id, firm_id, client_of, name FROM companies WHERE id IN (1,2,3) ORDER BY id").map! {|i| i.map! {|j| j.to_s unless j.nil?}})
     assert_equal [["1", "37signals"], ["2", "Summit"], ["3", "Microsoft"]],
-      Company.connection.select_rows("SELECT id, name FROM companies ORDER BY id LIMIT 3")
+      Company.connection.select_rows("SELECT id, name FROM companies WHERE id IN (1,2,3) ORDER BY id").map! {|i| i.map! {|j| j.to_s unless j.nil?}}
   end
 
   protected

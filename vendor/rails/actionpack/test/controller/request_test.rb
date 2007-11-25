@@ -51,6 +51,12 @@ class RequestTest < Test::Unit::TestCase
     @request.host = "192.168.1.200"
     assert_nil @request.domain
 
+    @request.host = "foo.192.168.1.200"
+    assert_nil @request.domain
+
+    @request.host = "192.168.1.200.com"
+    assert_equal "200.com", @request.domain
+
     @request.host = nil
     assert_nil @request.domain
   end
@@ -67,6 +73,15 @@ class RequestTest < Test::Unit::TestCase
 
     @request.host = "foobar.foobar.com"
     assert_equal %w( foobar ), @request.subdomains
+
+    @request.host = "192.168.1.200"
+    assert_equal [], @request.subdomains
+
+    @request.host = "foo.192.168.1.200"
+    assert_equal [], @request.subdomains
+
+    @request.host = "192.168.1.200.com"
+    assert_equal %w( 192 168 1 ), @request.subdomains
 
     @request.host = nil
     assert_equal [], @request.subdomains
@@ -237,11 +252,13 @@ class RequestTest < Test::Unit::TestCase
   end
 
 
-  def test_host_with_port
+  def test_host_with_default_port
     @request.host = "rubyonrails.org"
     @request.port = 80
     assert_equal "rubyonrails.org", @request.host_with_port
-
+  end
+  
+  def test_host_with_non_default_port
     @request.host = "rubyonrails.org"
     @request.port = 81
     assert_equal "rubyonrails.org:81", @request.host_with_port
@@ -354,6 +371,15 @@ class RequestTest < Test::Unit::TestCase
   
   def test_user_agent
     assert_not_nil @request.user_agent
+  end
+  
+  def test_parameters
+    @request.instance_eval { @request_parameters = { "foo" => 1 } }
+    @request.instance_eval { @query_parameters = { "bar" => 2 } }
+    
+    assert_equal({"foo" => 1, "bar" => 2}, @request.parameters)
+    assert_equal({"foo" => 1}, @request.request_parameters)
+    assert_equal({"bar" => 2}, @request.query_parameters)
   end
 
   protected
@@ -527,21 +553,29 @@ class UrlEncodedRequestParameterParsingTest < Test::Unit::TestCase
     assert_equal expected_output, ActionController::AbstractRequest.parse_request_parameters(input)
   end
 
+  UploadedStringIO = ActionController::UploadedStringIO
+  class MockUpload < UploadedStringIO
+    def initialize(content_type, original_path, *args)
+      self.content_type = content_type
+      self.original_path = original_path
+      super *args
+    end
+  end
+
   def test_parse_params_from_multipart_upload
-    mockup = Struct.new(:content_type, :original_filename, :read, :rewind)
-    file = mockup.new('img/jpeg', 'foo.jpg')
-    ie_file = mockup.new('img/jpeg', 'c:\\Documents and Settings\\foo\\Desktop\\bar.jpg')
-    non_file_text_part = mockup.new('text/plain', '', 'abc')
+    file = MockUpload.new('img/jpeg', 'foo.jpg')
+    ie_file = MockUpload.new('img/jpeg', 'c:\\Documents and Settings\\foo\\Desktop\\bar.jpg')
+    non_file_text_part = MockUpload.new('text/plain', '', 'abc')
 
     input = {
-      "something" => [ StringIO.new("") ],
-      "array_of_stringios" => [[ StringIO.new("One"), StringIO.new("Two") ]],
-      "mixed_types_array" => [[ StringIO.new("Three"), "NotStringIO" ]],
-      "mixed_types_as_checkboxes[strings][nested]" => [[ file, "String", StringIO.new("StringIO")]],
-      "ie_mixed_types_as_checkboxes[strings][nested]" => [[ ie_file, "String", StringIO.new("StringIO")]],
-      "products[string]" => [ StringIO.new("Apple Computer") ],
+      "something" => [ UploadedStringIO.new("") ],
+      "array_of_stringios" => [[ UploadedStringIO.new("One"), UploadedStringIO.new("Two") ]],
+      "mixed_types_array" => [[ UploadedStringIO.new("Three"), "NotStringIO" ]],
+      "mixed_types_as_checkboxes[strings][nested]" => [[ file, "String", UploadedStringIO.new("StringIO")]],
+      "ie_mixed_types_as_checkboxes[strings][nested]" => [[ ie_file, "String", UploadedStringIO.new("StringIO")]],
+      "products[string]" => [ UploadedStringIO.new("Apple Computer") ],
       "products[file]" => [ file ],
-      "ie_products[string]" => [ StringIO.new("Microsoft") ],
+      "ie_products[string]" => [ UploadedStringIO.new("Microsoft") ],
       "ie_products[file]" => [ ie_file ],
       "text_part" => [non_file_text_part]
     }
@@ -695,7 +729,7 @@ class MultipartRequestParameterParsingTest < Test::Unit::TestCase
     file = params['file']
     assert_kind_of StringIO, file
     assert_equal 'file.csv', file.original_filename
-    assert_equal '', file.content_type
+    assert_nil file.content_type
     assert_equal 'contents', file.read
 
     file = params['flowers']
@@ -719,7 +753,9 @@ class MultipartRequestParameterParsingTest < Test::Unit::TestCase
   private
     def process(name)
       File.open(File.join(FIXTURE_PATH, name), 'rb') do |file|
-        ActionController::AbstractRequest.parse_multipart_form_parameters(file, 'AaB03x', file.stat.size, {})
+        params = ActionController::AbstractRequest.parse_multipart_form_parameters(file, 'AaB03x', file.stat.size, {})
+        assert_equal 0, file.pos  # file was rewound after reading
+        params
       end
     end
 end
@@ -758,7 +794,7 @@ class XmlParamsParsingTest < Test::Unit::TestCase
     def parse_body(body)
       env = { 'CONTENT_TYPE'   => 'application/xml',
               'CONTENT_LENGTH' => body.size.to_s }
-      cgi = ActionController::Integration::Session::MockCGI.new(env, body)
+      cgi = ActionController::Integration::Session::StubCGI.new(env, body)
       ActionController::CgiRequest.new(cgi).request_parameters
     end
 end
@@ -768,7 +804,7 @@ class LegacyXmlParamsParsingTest < XmlParamsParsingTest
     def parse_body(body)
       env = { 'HTTP_X_POST_DATA_FORMAT' => 'xml',
               'CONTENT_LENGTH' => body.size.to_s }
-      cgi = ActionController::Integration::Session::MockCGI.new(env, body)
+      cgi = ActionController::Integration::Session::StubCGI.new(env, body)
       ActionController::CgiRequest.new(cgi).request_parameters
     end
 end

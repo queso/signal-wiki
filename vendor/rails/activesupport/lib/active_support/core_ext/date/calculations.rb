@@ -68,11 +68,12 @@ module ActiveSupport #:nodoc:
         end
         
         # Provides precise Date calculations for years, months, and days.  The +options+ parameter takes a hash with 
-        # any of these keys: :months, :days, :years.
+        # any of these keys: :years, :months, :weeks, :days.
         def advance(options)
           d = self
           d = d >> options.delete(:years) * 12 if options[:years]
           d = d >> options.delete(:months)     if options[:months]
+          d = d +  options.delete(:weeks) * 7  if options[:weeks]
           d = d +  options.delete(:days)       if options[:days]
           d
         end
@@ -93,39 +94,22 @@ module ActiveSupport #:nodoc:
         
         # Returns a new Date/DateTime representing the time a number of specified months ago
         def months_ago(months)
-          months_since(-months)
+          advance(:months => -months)
         end
 
+        # Returns a new Date/DateTime representing the time a number of specified months in the future
         def months_since(months)
-          year, month, day = self.year, self.month, self.day
-
-          month += months
-
-          # in case months is negative
-          while month < 1
-           month += 12
-           year -= 1
-          end
-
-          # in case months is positive
-          while month > 12
-           month -= 12
-           year += 1
-          end
-
-          max = ::Time.days_in_month(month, year)
-          day = max if day > max
-
-          change(:year => year, :month => month, :day => day)
+          advance(:months => months)
         end
 
         # Returns a new Date/DateTime representing the time a number of specified years ago
         def years_ago(years)
-          change(:year => self.year - years)
+          advance(:years => -years)
         end
 
+        # Returns a new Date/DateTime representing the time a number of specified years in the future
         def years_since(years)
-          change(:year => self.year + years)
+          advance(:years => years)
         end
 
         # Short-hand for years_ago(1)
@@ -173,7 +157,7 @@ module ActiveSupport #:nodoc:
         # Returns a new Date/DateTime representing the end of the month (last day of the month; DateTime objects will have time set to 0:00)
         def end_of_month
           last_day = ::Time.days_in_month( self.month, self.year )
-          self.acts_like?(:time) ? change(:day => last_day,:hour => 0, :min => 0, :sec => 0) : change(:day => last_day)
+          self.acts_like?(:time) ? change(:day => last_day, :hour => 23, :min => 59, :sec => 59) : change(:day => last_day)
         end
         alias :at_end_of_month :end_of_month
 

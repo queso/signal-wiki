@@ -1,10 +1,13 @@
 module ActiveRecord
   module AttributeMethods #:nodoc:
     DEFAULT_SUFFIXES = %w(= ? _before_type_cast)
+    ATTRIBUTE_TYPES_CACHED_BY_DEFAULT = [:datetime, :timestamp, :time, :date]
 
     def self.included(base)
       base.extend ClassMethods
       base.attribute_method_suffix *DEFAULT_SUFFIXES
+      base.cattr_accessor :attribute_types_cached_by_default, :instance_writer => false
+      base.attribute_types_cached_by_default = ATTRIBUTE_TYPES_CACHED_BY_DEFAULT
     end
 
     # Declare and check for suffixed attribute methods.
@@ -58,7 +61,7 @@ module ActiveRecord
       def define_attribute_methods
         return if generated_methods?
         columns_hash.each do |name, column|
-          unless instance_method_already_defined?(name)
+          unless instance_method_already_implemented?(name)
             if self.serialized_attributes[name]
               define_read_method_for_serialized_attribute(name)
             else
@@ -66,25 +69,44 @@ module ActiveRecord
             end
           end
 
-          unless instance_method_already_defined?("#{name}=")
+          unless instance_method_already_implemented?("#{name}=")
             define_write_method(name.to_sym)
           end
 
-          unless instance_method_already_defined?("#{name}?")
+          unless instance_method_already_implemented?("#{name}?")
             define_question_method(name)
           end
         end
       end
 
-      def instance_method_already_defined?(method_name)
-        method_defined?(method_name) || 
-          private_method_defined?(method_name) ||
-          protected_method_defined?(method_name)
+      # Check to see if the method is defined in the model or any of it's subclasses that also derive from ActiveRecord.
+      # Raise DangerousAttributeError if the method is defined by ActiveRecord though.
+      def instance_method_already_implemented?(method_name)
+        return true if method_name =~ /^id(=$|\?$|$)/
+        @_defined_class_methods         ||= Set.new(ancestors.first(ancestors.index(ActiveRecord::Base)).collect! { |m| m.public_instance_methods(false) | m.private_instance_methods(false) | m.protected_instance_methods(false) }.flatten)
+        @@_defined_activerecord_methods ||= Set.new(ActiveRecord::Base.public_instance_methods(false) | ActiveRecord::Base.private_instance_methods(false) | ActiveRecord::Base.protected_instance_methods(false))
+        raise DangerousAttributeError, "#{method_name} is defined by ActiveRecord" if @@_defined_activerecord_methods.include?(method_name)
+        @_defined_class_methods.include?(method_name)
       end
-
+      
       alias :define_read_methods :define_attribute_methods
 
+      # +cache_attributes+ allows you to declare which converted attribute values should
+      # be cached. Usually caching only pays off for attributes with expensive conversion
+      # methods, like date columns (e.g. created_at, updated_at).
+      def cache_attributes(*attribute_names)
+        attribute_names.each {|attr| cached_attributes << attr.to_s}
+      end
 
+      # returns the attributes where
+      def cached_attributes
+        @cached_attributes ||=
+          columns.select{|c| attribute_types_cached_by_default.include?(c.type)}.map(&:name).to_set
+      end
+
+      def cache_attribute?(attr_name)
+        cached_attributes.include?(attr_name)
+      end
 
       private
         # Suffixes a, ?, c become regexp /(a|\?|c)$/
@@ -107,7 +129,10 @@ module ActiveRecord
             access_code = access_code.insert(0, "missing_attribute('#{attr_name}', caller) unless @attributes.has_key?('#{attr_name}'); ")
           end
           
-          evaluate_attribute_method attr_name, "def #{symbol}; @attributes_cache['#{attr_name}'] ||= begin; #{access_code}; end; end"
+          if cache_attribute?(attr_name)
+            access_code = "@attributes_cache['#{attr_name}'] ||= (#{access_code})"
+          end
+          evaluate_attribute_method attr_name, "def #{symbol}; #{access_code}; end"
         end
 
         # Define read method for serialized attribute.
@@ -132,7 +157,7 @@ module ActiveRecord
           end
 
           begin
-            class_eval(method_definition)
+            class_eval(method_definition, __FILE__, __LINE__)
           rescue SyntaxError => err
             generated_methods.delete(attr_name)
             if logger

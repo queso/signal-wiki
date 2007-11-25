@@ -112,14 +112,14 @@ module ActionView
           add_counter_to_local_assigns!(partial_name, local_assigns)
           add_object_to_local_assigns!(partial_name, local_assigns, object)
 
-          if logger
+          if logger && logger.debug?
             ActionController::Base.benchmark("Rendered #{path}/_#{partial_name}", Logger::DEBUG, false) do
               render("#{path}/_#{partial_name}", local_assigns)
             end
           else
             render("#{path}/_#{partial_name}", local_assigns)
           end
-        when Array, ActiveRecord::Associations::AssociationCollection
+        when Array, ActiveRecord::Associations::AssociationCollection, ActiveRecord::Associations::HasManyThroughAssociation
           if partial_path.any?
             path       = ActionController::RecordIdentifier.partial_path(partial_path.first)
             collection = partial_path
@@ -187,12 +187,14 @@ module ActionView
 
       def add_object_to_local_assigns!(partial_name, local_assigns, object)
         variable_name = partial_variable_name(partial_name)
-        local_assigns[variable_name] ||=
-          if object.is_a?(ActionView::Base::ObjectWrapper)
-            object.value
-          else
-            object
-          end || controller.instance_variable_get("@#{variable_name}")
+
+        local_assigns[:object] ||=
+          local_assigns[variable_name] ||=
+            if object.is_a?(ActionView::Base::ObjectWrapper)
+              object.value
+            else
+              object
+            end || controller.instance_variable_get("@#{variable_name}")
       end
   end
 end

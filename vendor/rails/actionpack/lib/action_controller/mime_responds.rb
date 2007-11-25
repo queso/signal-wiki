@@ -1,7 +1,9 @@
 module ActionController #:nodoc:
   module MimeResponds #:nodoc:
     def self.included(base)
-      base.send(:include, ActionController::MimeResponds::InstanceMethods)
+      base.module_eval do
+        include ActionController::MimeResponds::InstanceMethods
+      end
     end
 
     module InstanceMethods
@@ -52,7 +54,7 @@ module ActionController #:nodoc:
       #   end
       #
       # If the client wants HTML, we just redirect them back to the person list. If they want Javascript
-      # (wants.js), then it is an RJS request and we render the RJS template associated with this action.
+      # (format.js), then it is an RJS request and we render the RJS template associated with this action.
       # Lastly, if the client wants XML, we render the created person as XML, but with a twist: we also
       # include the person's company in the rendered XML, so you get something like this:
       #
@@ -108,14 +110,11 @@ module ActionController #:nodoc:
 
     class Responder #:nodoc:
       def initialize(controller)
-        @controller    = controller
-        @request       = controller.request
-        @response      = controller.response
+        @controller = controller
+        @request    = controller.request
+        @response   = controller.response
 
-        format = @request.parameters[:format]
-        @mime_type_priority = format && Mime::EXTENSION_LOOKUP[format] ?
-          [ Mime::EXTENSION_LOOKUP[format] ] :
-          @request.accepts
+        @mime_type_priority = Array(Mime::Type.lookup_by_extension(@request.parameters[:format]) || @request.accepts)
 
         @order     = []
         @responses = {}
@@ -126,18 +125,10 @@ module ActionController #:nodoc:
 
         @order << mime_type
 
-        if block_given?
-          @responses[mime_type] = Proc.new do
-            @response.template.template_format = mime_type.to_sym
-            @response.content_type = mime_type.to_s
-            block.call
-          end
-        else
-          @responses[mime_type] = Proc.new do
-            @response.template.template_format = mime_type.to_sym
-            @response.content_type = mime_type.to_s
-            @controller.send :render, :action => @controller.action_name
-          end
+        @responses[mime_type] = Proc.new do
+          @response.template.template_format = mime_type.to_sym
+          @response.content_type = mime_type.to_s
+          block_given? ? block.call : @controller.send(:render, :action => @controller.action_name)
         end
       end
 

@@ -24,6 +24,34 @@ class RedirectController < ActionController::Base
     redirect_to :action => "hello_world"
   end
 
+  def redirect_with_status 
+    redirect_to({:action => "hello_world", :status => 301})
+  end 
+
+  def redirect_with_status_hash
+    redirect_to({:action => "hello_world"}, {:status => 301})
+  end 
+
+  def url_redirect_with_status 
+    redirect_to("http://www.example.com", :status => :moved_permanently)
+  end 
+   
+  def url_redirect_with_status_hash 
+    redirect_to("http://www.example.com", {:status => 301})
+  end 
+
+  def relative_url_redirect_with_status 
+    redirect_to("/things/stuff", :status => :found)
+  end 
+   
+  def relative_url_redirect_with_status_hash
+    redirect_to("/things/stuff", {:status => 301})
+  end 
+   
+  def redirect_to_back_with_status 
+    redirect_to :back, :status => 307 
+  end
+
   def host_redirect
     redirect_to :action => "other_host", :only_path => false, :host => 'other.test.host'
   end
@@ -72,6 +100,56 @@ class RedirectTest < Test::Unit::TestCase
     assert_equal "http://test.host/redirect/hello_world", redirect_to_url
   end
 
+  def test_redirect_with_no_status
+    get :simple_redirect
+    assert_response 302
+    assert_equal "http://test.host/redirect/hello_world", redirect_to_url
+  end
+
+  def test_redirect_with_status 
+    get :redirect_with_status 
+    assert_response 301 
+    assert_equal "http://test.host/redirect/hello_world", redirect_to_url 
+  end 
+
+  def test_redirect_with_status_hash 
+    get :redirect_with_status_hash
+    assert_response 301 
+    assert_equal "http://test.host/redirect/hello_world", redirect_to_url 
+  end
+   
+  def test_url_redirect_with_status 
+    get :url_redirect_with_status 
+    assert_response 301 
+    assert_equal "http://www.example.com", redirect_to_url 
+  end 
+
+  def test_url_redirect_with_status_hash
+    get :url_redirect_with_status_hash
+    assert_response 301 
+    assert_equal "http://www.example.com", redirect_to_url 
+  end 
+
+  
+  def test_relative_url_redirect_with_status 
+    get :relative_url_redirect_with_status 
+    assert_response 302
+    assert_equal "http://test.host/things/stuff", redirect_to_url 
+  end 
+   
+  def test_relative_url_redirect_with_status_hash
+    get :relative_url_redirect_with_status_hash
+    assert_response 301 
+    assert_equal "http://test.host/things/stuff", redirect_to_url 
+  end   
+   
+  def test_redirect_to_back_with_status 
+    @request.env["HTTP_REFERER"] = "http://www.example.com/coming/from" 
+    get :redirect_to_back_with_status 
+    assert_response 307 
+    assert_equal "http://www.example.com/coming/from", redirect_to_url 
+  end
+
   def test_simple_redirect_using_options
     get :host_redirect
     assert_response :redirect
@@ -84,11 +162,11 @@ class RedirectTest < Test::Unit::TestCase
     begin
       assert_redirected_to :action => "other_host", :only_path => true
     rescue Test::Unit::AssertionFailedError => err
-      redirection_msg, diff_msg = err.message.scan(/<\{[^\}]+\}>/).collect { |s| s[2..-3] }
+      expected_msg, redirection_msg, diff_msg = err.message.scan(/<\{[^\}]+\}>/).collect { |s| s[2..-3] }
       assert_match %r("only_path"=>false),        redirection_msg
       assert_match %r("host"=>"other.test.host"), redirection_msg
       assert_match %r("action"=>"other_host"),    redirection_msg
-      assert_match %r("only_path"=>true),         diff_msg
+      assert_match %r("only_path"=>false),        diff_msg
       assert_match %r("host"=>"other.test.host"), diff_msg
     end
   end

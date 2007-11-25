@@ -51,6 +51,9 @@ module ActionController
       # A reference to the response instance used by the last request.
       attr_reader :response
 
+      # A running counter of the number of requests processed.
+      attr_accessor :request_count
+
       # Create and initialize a new +Session+ instance.
       def initialize
         reset!
@@ -67,6 +70,7 @@ module ActionController
         @https = false
         @cookies = {}
         @controller = @request = @response = nil
+        @request_count = 0
 
         self.host        = "www.example.com"
         self.remote_addr = "127.0.0.1"
@@ -74,16 +78,12 @@ module ActionController
 
         unless defined? @named_routes_configured
           # install the named routes in this session instance.
-          # But we have to disable the optimisation code so that we can
-          # generate routes without @request being initialized
-          Routing.optimise_named_routes=false
-          Routing::Routes.reload!
           klass = class<<self; self; end
           Routing::Routes.install_helpers(klass)
 
           # the helpers are made protected by default--we make them public for
           # easier access during testing and troubleshooting.
-          klass.send(:public, *Routing::Routes.named_routes.helpers)
+          klass.module_eval { public *Routing::Routes.named_routes.helpers }
           @named_routes_configured = true
         end
       end
@@ -124,17 +124,18 @@ module ActionController
       # Performs a GET request, following any subsequent redirect. Note that
       # the redirects are followed until the response is not a redirect--this
       # means you may run into an infinite loop if your redirect loops back to
-      # itself.
-      def get_via_redirect(path, args={})
-        get path, args
+      # itself. Headers are treated in the same way as #get.
+      def get_via_redirect(path, args={}, headers = {})
+        get path, args, headers
         follow_redirect! while redirect?
         status
       end
 
       # Performs a POST request, following any subsequent redirect. This is
-      # vulnerable to infinite loops, the same as #get_via_redirect.
-      def post_via_redirect(path, args={})
-        post path, args
+      # vulnerable to infinite loops, the same as #get_via_redirect. Headers are
+      # treated in the same way as #get.
+      def post_via_redirect(path, args={}, headers = {})
+        post path, args, headers
         follow_redirect! while redirect?
         status
       end
@@ -199,14 +200,16 @@ module ActionController
       end
 
       private
-        class MockCGI < CGI #:nodoc:
-          attr_accessor :stdoutput, :env_table
+        class StubCGI < CGI #:nodoc:
+          attr_accessor :stdinput, :stdoutput, :env_table
 
-          def initialize(env, input = nil)
+          def initialize(env, stdinput = nil)
             self.env_table = env
             self.stdoutput = StringIO.new
 
-            super('query', StringIO.new(input || ''))
+            super
+
+            @stdinput = stdinput.is_a?(IO) ? stdinput : StringIO.new(stdinput || '')
           end
         end
 
@@ -252,14 +255,15 @@ module ActionController
           end
 
           unless ActionController::Base.respond_to?(:clear_last_instantiation!)
-            ActionController::Base.send(:include, ControllerCapture)
+            ActionController::Base.module_eval { include ControllerCapture }
           end
 
           ActionController::Base.clear_last_instantiation!
 
-          cgi = MockCGI.new(env, data)
+          cgi = StubCGI.new(env, data)
           Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, cgi.stdoutput)
           @result = cgi.stdoutput.string
+          @request_count += 1
 
           @controller = ActionController::Base.last_instantiation
           @request = @controller.request
@@ -288,7 +292,7 @@ module ActionController
           end
 
           (@headers['set-cookie'] || [] ).each do |string|
-            name, value = string.match(/^(.*?)=(.*?);/)[1,2]
+            name, value = string.match(/^([^=]*)=([^;]*);/)[1,2]
             @cookies[name] = value
           end
 
@@ -306,7 +310,7 @@ module ActionController
 
         # Get a temporary URL writer object
         def generic_url_rewriter
-          cgi = MockCGI.new('REQUEST_METHOD' => "GET",
+          cgi = StubCGI.new('REQUEST_METHOD' => "GET",
                             'QUERY_STRING'   => "",
                             "REQUEST_URI"    => "/",
                             "HTTP_HOST"      => host,
@@ -358,6 +362,76 @@ module ActionController
           controller = new_without_capture(*args)
           self.last_instantiation ||= controller
           controller
+        end
+      end
+    end
+
+    module Runner
+      # Reset the current session. This is useful for testing multiple sessions
+      # in a single test case.
+      def reset!
+        @integration_session = open_session
+      end
+
+      %w(get post put head delete cookies assigns
+         xml_http_request get_via_redirect post_via_redirect).each do |method|
+        define_method(method) do |*args|
+          reset! unless @integration_session
+          # reset the html_document variable, but only for new get/post calls
+          @html_document = nil unless %w(cookies assigns).include?(method)
+          returning @integration_session.send!(method, *args) do
+            copy_session_variables!
+          end
+        end
+      end
+
+      # Open a new session instance. If a block is given, the new session is
+      # yielded to the block before being returned.
+      #
+      #   session = open_session do |sess|
+      #     sess.extend(CustomAssertions)
+      #   end
+      #
+      # By default, a single session is automatically created for you, but you
+      # can use this method to open multiple sessions that ought to be tested
+      # simultaneously.
+      def open_session
+        session = Integration::Session.new
+
+        # delegate the fixture accessors back to the test instance
+        extras = Module.new { attr_accessor :delegate, :test_result }
+        if self.class.respond_to?(:fixture_table_names)
+          self.class.fixture_table_names.each do |table_name|
+            name = table_name.tr(".", "_")
+            next unless respond_to?(name)
+            extras.send!(:define_method, name) { |*args| delegate.send(name, *args) }
+          end
+        end
+
+        # delegate add_assertion to the test case
+        extras.send!(:define_method, :add_assertion) { test_result.add_assertion }
+        session.extend(extras)
+        session.delegate = self
+        session.test_result = @_result
+
+        yield session if block_given?
+        session
+      end
+
+      # Copy the instance variables from the current session instance into the
+      # test instance.
+      def copy_session_variables! #:nodoc:
+        return unless @integration_session
+        %w(controller response request).each do |var|
+          instance_variable_set("@#{var}", @integration_session.send!(var))
+        end
+      end
+
+      # Delegate unhandled messages to the current session instance.
+      def method_missing(sym, *args, &block)
+        reset! unless @integration_session
+        returning @integration_session.send!(sym, *args, &block) do
+          copy_session_variables!
         end
       end
     end
@@ -439,6 +513,8 @@ module ActionController
   #       end
   #   end
   class IntegrationTest < Test::Unit::TestCase
+    include Integration::Runner
+
     # Work around a bug in test/unit caused by the default test being named
     # as a symbol (:default_test), which causes regex test filters
     # (like "ruby test.rb -n /foo/") to fail because =~ doesn't work on
@@ -484,71 +560,6 @@ module ActionController
         @_use_instantiated_fixtures ?
           @use_instantiated_fixtures :
           superclass.use_instantiated_fixtures
-      end
-    end
-
-    # Reset the current session. This is useful for testing multiple sessions
-    # in a single test case.
-    def reset!
-      @integration_session = open_session
-    end
-
-    %w(get post put head delete cookies assigns xml_http_request).each do |method|
-      define_method(method) do |*args|
-        reset! unless @integration_session
-        # reset the html_document variable, but only for new get/post calls
-        @html_document = nil unless %w(cookies assigns).include?(method)
-        returning @integration_session.send(method, *args) do
-          copy_session_variables!
-        end
-      end
-    end
-
-    # Open a new session instance. If a block is given, the new session is
-    # yielded to the block before being returned.
-    #
-    #   session = open_session do |sess|
-    #     sess.extend(CustomAssertions)
-    #   end
-    #
-    # By default, a single session is automatically created for you, but you
-    # can use this method to open multiple sessions that ought to be tested
-    # simultaneously.
-    def open_session
-      session = Integration::Session.new
-
-      # delegate the fixture accessors back to the test instance
-      extras = Module.new { attr_accessor :delegate, :test_result }
-      self.class.fixture_table_names.each do |table_name|
-        name = table_name.tr(".", "_")
-        next unless respond_to?(name)
-        extras.send(:define_method, name) { |*args| delegate.send(name, *args) }
-      end
-
-      # delegate add_assertion to the test case
-      extras.send(:define_method, :add_assertion) { test_result.add_assertion }
-      session.extend(extras)
-      session.delegate = self
-      session.test_result = @_result
-
-      yield session if block_given?
-      session
-    end
-
-    # Copy the instance variables from the current session instance into the
-    # test instance.
-    def copy_session_variables! #:nodoc:
-      return unless @integration_session
-      %w(controller response request).each do |var|
-        instance_variable_set("@#{var}", @integration_session.send(var))
-      end
-    end
-
-    # Delegate unhandled messages to the current session instance.
-    def method_missing(sym, *args, &block)
-      reset! unless @integration_session
-      returning @integration_session.send(sym, *args, &block) do
-        copy_session_variables!
       end
     end
   end

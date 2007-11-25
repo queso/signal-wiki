@@ -21,6 +21,34 @@ class ProtectedPerson < ActiveRecord::Base
   attr_protected :first_name
 end
 
+class UniqueReply < Reply
+  validates_uniqueness_of :content, :scope => 'parent_id'
+end
+
+class SillyUniqueReply < UniqueReply
+end
+
+class Topic < ActiveRecord::Base
+  has_many :unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :silly_unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
+end
+
+class Wizard < ActiveRecord::Base
+  self.abstract_class = true
+
+  validates_uniqueness_of :name
+end
+
+class IneptWizard < Wizard
+  validates_uniqueness_of :city
+end
+
+class Conjurer < IneptWizard
+end
+
+class Thaumaturgist < IneptWizard
+end
+
 class ValidationsTest < Test::Unit::TestCase
   fixtures :topics, :developers
 
@@ -320,6 +348,21 @@ class ValidationsTest < Test::Unit::TestCase
     assert r3.valid?, "Saving r3"
   end
 
+  def test_validate_uniqueness_scoped_to_defining_class
+    t = Topic.create("title" => "What, me worry?")
+
+    r1 = t.unique_replies.create "title" => "r1", "content" => "a barrel of fun"
+    assert r1.valid?, "Saving r1"
+
+    r2 = t.silly_unique_replies.create "title" => "r2", "content" => "a barrel of fun"
+    assert !r2.valid?, "Saving r2"
+
+    # Should succeed as validates_uniqueness_of only applies to
+    # UniqueReply and it's subclasses
+    r3 = t.replies.create "title" => "r2", "content" => "a barrel of fun"
+    assert r3.valid?, "Saving r3"
+  end
+
   def test_validate_uniqueness_with_scope_array
     Reply.validates_uniqueness_of(:author_name, :scope => [:author_email_address, :parent_id])
 
@@ -373,6 +416,35 @@ class ValidationsTest < Test::Unit::TestCase
     t2.title = nil
     assert t2.valid?, "should validate with nil"
     assert t2.save, "should save with nil"
+  end
+
+  def test_validate_straight_inheritance_uniqueness
+    w1 = IneptWizard.create(:name => "Rincewind", :city => "Ankh-Morpork")
+    assert w1.valid?, "Saving w1"
+
+    # Should use validation from base class (which is abstract)
+    w2 = IneptWizard.new(:name => "Rincewind", :city => "Quirm")
+    assert !w2.valid?, "w2 shouldn't be valid"
+    assert w2.errors.on(:name), "Should have errors for name"
+    assert_equal "has already been taken", w2.errors.on(:name), "Should have uniqueness message for name"
+
+    w3 = Conjurer.new(:name => "Rincewind", :city => "Quirm")
+    assert !w3.valid?, "w3 shouldn't be valid"
+    assert w3.errors.on(:name), "Should have errors for name"
+    assert_equal "has already been taken", w3.errors.on(:name), "Should have uniqueness message for name"
+
+    w4 = Conjurer.create(:name => "The Amazing Bonko", :city => "Quirm")
+    assert w4.valid?, "Saving w4"
+
+    w5 = Thaumaturgist.new(:name => "The Amazing Bonko", :city => "Lancre")
+    assert !w5.valid?, "w5 shouldn't be valid"
+    assert w5.errors.on(:name), "Should have errors for name"
+    assert_equal "has already been taken", w5.errors.on(:name), "Should have uniqueness message for name"
+
+    w6 = Thaumaturgist.new(:name => "Mustrum Ridcully", :city => "Quirm")
+    assert !w6.valid?, "w6 shouldn't be valid"
+    assert w6.errors.on(:city), "Should have errors for city"
+    assert_equal "has already been taken", w6.errors.on(:city), "Should have uniqueness message for city"
   end
 
   def test_validate_format
@@ -475,6 +547,17 @@ class ValidationsTest < Test::Unit::TestCase
     assert Topic.create("title" => "abcde").valid?
   end
 
+  def test_validates_inclusion_of_with_formatted_message
+    Topic.validates_inclusion_of( :title, :in => %w( a b c d e f g ), :message => "option %s is not in the list" )
+
+    assert Topic.create("title" => "a", "content" => "abc").valid?
+
+    t = Topic.create("title" => "uhoh", "content" => "abc")
+    assert !t.valid?
+    assert t.errors.on(:title)
+    assert_equal "option uhoh is not in the list", t.errors["title"]
+  end
+
   def test_numericality_with_allow_nil_and_getter_method
     Developer.validates_numericality_of( :salary, :allow_nil => true)
     developer = Developer.new("name" => "michael", "salary" => nil)
@@ -487,6 +570,17 @@ class ValidationsTest < Test::Unit::TestCase
 
     assert Topic.create("title" => "something", "content" => "abc").valid?
     assert !Topic.create("title" => "monkey", "content" => "abc").valid?
+  end
+
+  def test_validates_exclusion_of_with_formatted_message
+    Topic.validates_exclusion_of( :title, :in => %w( abe monkey ), :message => "option %s is restricted" )
+
+    assert Topic.create("title" => "something", "content" => "abc")
+
+    t = Topic.create("title" => "monkey")
+    assert !t.valid?
+    assert t.errors.on(:title)
+    assert_equal "option monkey is restricted", t.errors["title"]
   end
 
   def test_validates_length_of_using_minimum

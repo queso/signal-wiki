@@ -1,7 +1,7 @@
 module ActiveRecord #:nodoc:
   module Serialization
     # Builds an XML document to represent the model.   Some configuration is
-    # available through +options+, however more complicated cases should use 
+    # available through +options+, however more complicated cases should 
     # override ActiveRecord's to_xml.
     #
     # By default the generated XML document will include the processing 
@@ -52,7 +52,7 @@ module ActiveRecord #:nodoc:
     #     <id type="integer">1</id>
     #     <rating type="integer">1</rating>
     #     <name>37signals</name>
-    #     <clients>
+    #     <clients type="array">
     #       <client>
     #         <rating type="integer">1</rating>
     #         <name>Summit</name>
@@ -107,7 +107,7 @@ module ActiveRecord #:nodoc:
     #     </creator>
     #   </firm>
     #
-    # You may override the to_xml method in your ActiveRecord::Base
+    # You can override the to_xml method in your ActiveRecord::Base
     # subclasses if you need to.  The general form of doing this is
     #
     #   class IHaveMyOwnXML < ActiveRecord::Base
@@ -269,6 +269,10 @@ module ActiveRecord #:nodoc:
 
         if include_types && type != :string
           decorations[:type] = type
+        end
+
+        if value.nil?
+          decorations[:nil] = true
         end
 
         decorations

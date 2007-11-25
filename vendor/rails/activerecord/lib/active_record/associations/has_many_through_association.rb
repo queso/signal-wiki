@@ -71,23 +71,30 @@ module ActiveRecord
       def delete(*records)
         records = flatten_deeper(records)
         records.each { |associate| raise_on_type_mismatch(associate) }
-        records.reject! { |associate| @target.delete(associate) if associate.new_record? }
-        return if records.empty?
-        
-        @delete_join_finder ||= "find_all_by_#{@reflection.source_reflection.association_foreign_key}"
+
         through = @reflection.through_reflection
-        through.klass.transaction do
-          records.each do |associate|
-            joins = @owner.send(through.name).send(@delete_join_finder, associate.id)
-            @owner.send(through.name).delete(joins)
+        raise ActiveRecord::HasManyThroughCantDissociateNewRecords.new(@owner, through) if @owner.new_record?
+
+        load_target
+
+        klass = through.klass
+        klass.transaction do
+          flatten_deeper(records).each do |associate|
+            raise_on_type_mismatch(associate)
+            raise ActiveRecord::HasManyThroughCantDissociateNewRecords.new(@owner, through) unless associate.respond_to?(:new_record?) && !associate.new_record?
+
+            @owner.send(through.name).proxy_target.delete(klass.delete_all(construct_join_attributes(associate)))
             @target.delete(associate)
           end
         end
+
+        self
       end
 
       def build(attrs = nil)
         raise ActiveRecord::HasManyThroughCantAssociateNewRecords.new(@owner, @reflection.through_reflection)
       end
+      alias_method :new, :build
 
       def create!(attrs = nil)
         @reflection.klass.transaction do
@@ -228,7 +235,9 @@ module ActiveRecord
             :find   => { :from        => construct_from,
                          :conditions  => construct_conditions,
                          :joins       => construct_joins,
-                         :select      => construct_select } }
+                         :select      => construct_select,
+                         :order       => @reflection.options[:order],
+                         :limit       => @reflection.options[:limit] } }
         end
 
         def construct_sql
@@ -255,8 +264,9 @@ module ActiveRecord
           @conditions ||= [
             (interpolate_sql(@reflection.klass.send(:sanitize_sql, @reflection.options[:conditions])) if @reflection.options[:conditions]),
             (interpolate_sql(@reflection.active_record.send(:sanitize_sql, @reflection.through_reflection.options[:conditions])) if @reflection.through_reflection.options[:conditions]),
+            (interpolate_sql(@reflection.active_record.send(:sanitize_sql, @reflection.source_reflection.options[:conditions])) if @reflection.source_reflection.options[:conditions]),
             ("#{@reflection.through_reflection.table_name}.#{@reflection.through_reflection.klass.inheritance_column} = #{@reflection.klass.quote_value(@reflection.through_reflection.klass.name.demodulize)}" unless @reflection.through_reflection.klass.descends_from_active_record?)
-          ].compact.collect { |condition| "(#{condition})" }.join(' AND ') unless (!@reflection.options[:conditions] && !@reflection.through_reflection.options[:conditions] && @reflection.through_reflection.klass.descends_from_active_record?)
+          ].compact.collect { |condition| "(#{condition})" }.join(' AND ') unless (!@reflection.options[:conditions] && !@reflection.through_reflection.options[:conditions]  && !@reflection.source_reflection.options[:conditions] && @reflection.through_reflection.klass.descends_from_active_record?)
         end
 
         alias_method :sql_conditions, :conditions

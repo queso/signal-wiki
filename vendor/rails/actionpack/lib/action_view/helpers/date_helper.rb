@@ -48,7 +48,7 @@ module ActionView
       #   distance_of_time_in_words(from_time, from_time + 45.seconds, true)  # => less than a minute
       #   distance_of_time_in_words(from_time, from_time - 45.seconds, true)  # => less than a minute
       #   distance_of_time_in_words(from_time, 76.seconds.from_now)           # => 1 minute
-      #   distance_of_time_in_words(from_time, from_time + 1.year + 3.days)   # => about 1 years
+      #   distance_of_time_in_words(from_time, from_time + 1.year + 3.days)   # => about 1 year
       #   distance_of_time_in_words(from_time, from_time + 4.years + 15.days + 30.minutes + 5.seconds) # => over 4 years
       #
       #   to_time = Time.now + 6.years + 19.days
@@ -174,6 +174,9 @@ module ActionView
       #   # Creates a time select tag with a seconds field that, when POSTed, will be stored in the entry variables in 
       #   # the submission_time attribute. 
       #   time_select("entry", "submission_time", :include_seconds => true)
+      #
+      #   # You can set the :minute_step to 15 which will give you: 00, 15, 30 and 45.
+      #   time_select 'game', 'game_time', {:minute_step => 15}
       #
       # The selects are prepared for multi-parameter assignment to an Active Record object.
       #

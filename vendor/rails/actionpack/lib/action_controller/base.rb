@@ -70,7 +70,7 @@ module ActionController #:nodoc:
   end
 
   class DoubleRenderError < ActionControllerError #:nodoc:
-    DEFAULT_MESSAGE = "Render and/or redirect were called multiple times in this action. Please note that you may only call render OR redirect, and only once per action. Also note that neither redirect nor render terminate execution of the action, so if you want to exit an action after redirecting, you need to do something like \"redirect_to(...) and return\". Finally, note that to cause a before filter to halt execution of the rest of the filter chain, the filter must return false, explicitly, so \"render(...) and return false\"."
+    DEFAULT_MESSAGE = "Render and/or redirect were called multiple times in this action. Please note that you may only call render OR redirect, and at most once per action. Also note that neither redirect nor render terminate execution of the action, so if you want to exit an action after redirecting, you need to do something like \"redirect_to(...) and return\". Finally, note that to cause a before filter to halt execution of the rest of the filter chain, the filter must return false, explicitly, so \"render(...) and return false\"."
 
     def initialize(message = nil)
       super(message || DEFAULT_MESSAGE)
@@ -162,16 +162,25 @@ module ActionController #:nodoc:
   # For removing objects from the session, you can either assign a single key to nil, like <tt>session[:person] = nil</tt>, or you can
   # remove the entire session with reset_session.
   #
-  # By default, sessions are stored on the file system in <tt>RAILS_ROOT/tmp/sessions</tt>. Any object can be placed in the session
-  # (as long as it can be Marshalled). But remember that 1000 active sessions each storing a 50kb object could lead to a 50MB store on the filesystem.
-  # In other words, think carefully about size and caching before resorting to the use of the session on the filesystem.
+  # Sessions are stored in a browser cookie that's crytographically signed, but unencrypted, by default. This prevents
+  # the user from tampering with the session but also allows him to see its contents.
   #
-  # An alternative to storing sessions on disk is to use ActiveRecordStore to store sessions in your database, which can solve problems
-  # caused by storing sessions in the file system and may speed up your application. To use ActiveRecordStore, uncomment the line:
+  # Do not put secret information in session!
+  #
+  # Other options for session storage are:
+  #
+  # ActiveRecordStore: sessions are stored in your database, which works better than PStore with multiple app servers and,
+  # unlike CookieStore, hides your session contents from the user. To use ActiveRecordStore, set
   #
   #   config.action_controller.session_store = :active_record_store
   #
   # in your <tt>environment.rb</tt> and run <tt>rake db:sessions:create</tt>.
+  #
+  # MemCacheStore: sessions are stored as entries in your memcached cache.  Set the session store type in <tt>environment.rb</tt>:
+  #
+  #   config.action_controller.session_store = :mem_cache_store
+  #
+  #  This assumes that memcached has been installed and configured properly.  See the MemCacheStore docs for more information.
   #
   # == Responses
   #
@@ -226,7 +235,7 @@ module ActionController #:nodoc:
   #
   # == Calling multiple redirects or renders
   #
-  # An action should conclude with a single render or redirect. Attempting to try to do either again will result in a DoubleRenderError:
+  # An action may contain only a single render or a single redirect. Attempting to try to do either again will result in a DoubleRenderError:
   #
   #   def do_something
   #     redirect_to :action => "elsewhere"
@@ -329,7 +338,12 @@ module ActionController #:nodoc:
     
     # Sets the token parameter name for RequestForgery.  Calling #protect_from_forgery sets it to :authenticity_token by default
     cattr_accessor :request_forgery_protection_token
-    
+
+    # Indicates whether or not optimise the generated named
+    # route helper methods
+    cattr_accessor :optimise_named_routes
+    self.optimise_named_routes = true
+
     # Controls whether request forgergy protection is turned on or not. Turned off by default only in test mode.
     class_inheritable_accessor :allow_forgery_protection
     self.allow_forgery_protection = true
@@ -392,7 +406,7 @@ module ActionController #:nodoc:
       # More methods can be hidden using <tt>hide_actions</tt>.
       def hidden_actions
         unless read_inheritable_attribute(:hidden_actions)
-          write_inheritable_attribute(:hidden_actions, ActionController::Base.public_instance_methods)
+          write_inheritable_attribute(:hidden_actions, ActionController::Base.public_instance_methods.map(&:to_s))
         end
 
         read_inheritable_attribute(:hidden_actions)
@@ -400,46 +414,42 @@ module ActionController #:nodoc:
 
       # Hide each of the given methods from being callable as actions.
       def hide_action(*names)
-        write_inheritable_attribute(:hidden_actions, hidden_actions | names.collect { |n| n.to_s })
-      end
-      
-
-      @@view_paths = {}
-      
-      # View load paths determine the bases from which template references can be made. So a call to
-      # render("test/template") will be looked up in the view load paths array and the closest match will be
-      # returned.
-      def view_paths=(value)
-        @@view_paths[name] = value
+        write_inheritable_attribute(:hidden_actions, hidden_actions | names.map(&:to_s))
       end
 
-      # View load paths for controller.
+      ## View load paths determine the bases from which template references can be made. So a call to
+      ## render("test/template") will be looked up in the view load paths array and the closest match will be
+      ## returned.
       def view_paths
-        if paths = @@view_paths[name]
-          paths
-        else
-          if superclass.respond_to?(:view_paths)
-            superclass.view_paths.dup.freeze
-          else
-            @@view_paths[name] = []
-          end
-        end
+        @view_paths || superclass.view_paths
       end
-      
+
+      def view_paths=(value)
+        @view_paths = value
+      end
+
       # Adds a view_path to the front of the view_paths array.
       # If the current class has no view paths, copy them from 
       # the superclass
+      #
+      #   ArticleController.prepend_view_path("views/default")
+      #   ArticleController.prepend_view_path(["views/default", "views/custom"])
+      #
       def prepend_view_path(path)
-        self.view_paths = view_paths.dup if view_paths.frozen?
-        view_paths.unshift(path)
+        @view_paths = superclass.view_paths.dup if @view_paths.nil?
+        view_paths.unshift(*path)
       end
       
       # Adds a view_path to the end of the view_paths array.
       # If the current class has no view paths, copy them from 
       # the superclass
+      #
+      #   ArticleController.append_view_path("views/default")
+      #   ArticleController.append_view_path(["views/default", "views/custom"])
+      #
       def append_view_path(path)
-        self.view_paths = view_paths.dup if view_paths.frozen?
-        view_paths << path
+        @view_paths = superclass.view_paths.dup if @view_paths.nil?
+        view_paths.push(*path)
       end
       
       # Replace sensitive paramater data from the request log.
@@ -626,9 +636,16 @@ module ActionController #:nodoc:
         request.session_options && request.session_options[:disabled] != false
       end
 
+      
+      self.view_paths = []
+      
       # View load paths for controller.
       def view_paths
-        self.class.view_paths
+        (@template || self.class).view_paths
+      end
+    
+      def view_paths=(value)
+        (@template || self.class).view_paths = value
       end
       
     protected
@@ -743,16 +760,22 @@ module ActionController #:nodoc:
       #
       # === Rendering JSON
       #
-      # Rendering JSON sets the content type to text/x-json and optionally wraps the JSON in a callback. It is expected
-      # that the response will be eval'd for use as a data structure.
+      # Rendering JSON sets the content type to application/json and optionally wraps the JSON in a callback. It is expected
+      # that the response will be parsed (or eval'd) for use as a data structure.
       #
-      #   # Renders '{name: "David"}'
+      #   # Renders '{"name": "David"}'
       #   render :json => {:name => "David"}.to_json
       #
-      # Sometimes the result isn't handled directly by a script (such as when the request comes from a SCRIPT tag),
-      # so the callback option is provided for these cases.
+      # It's not necessary to call <tt>to_json</tt> on the object you want to render, since <tt>render</tt> will
+      # automatically do that for you:
       #
-      #   # Renders 'show({name: "David"})'
+      #   # Also renders '{"name": "David"}'
+      #   render :json => {:name => "David"}
+      #
+      # Sometimes the result isn't handled directly by a script (such as when the request comes from a SCRIPT tag),
+      # so the <tt>:callback</tt> option is provided for these cases.
+      #
+      #   # Renders 'show({"name": "David"})'
       #   render :json => {:name => "David"}.to_json, :callback => 'show'
       #
       # === Rendering an inline template
@@ -844,19 +867,19 @@ module ActionController #:nodoc:
 
             if collection = options[:collection]
               render_for_text(
-                @template.send(:render_partial_collection, partial, collection, 
+                @template.send!(:render_partial_collection, partial, collection, 
                 options[:spacer_template], options[:locals]), options[:status]
               )
             else
               render_for_text(
-                @template.send(:render_partial, partial, 
+                @template.send!(:render_partial, partial, 
                 ActionView::Base::ObjectWrapper.new(options[:object]), options[:locals]), options[:status]
               )
             end
 
           elsif options[:update]
             add_variables_to_assigns
-            @template.send :evaluate_assigns
+            @template.send! :evaluate_assigns
 
             generator = ActionView::Helpers::PrototypeHelper::JavaScriptGenerator.new(@template, &block)
             response.content_type = Mime::JS
@@ -968,11 +991,11 @@ module ActionController #:nodoc:
 
       # Redirects the browser to the target specified in +options+. This parameter can take one of three forms:
       #
-      # * <tt>Hash</tt>: The URL will be generated by calling url_for with the +options+.
-      # * <tt>Record</tt>: The URL will be generated by calling url_for with the +options+, which will reference a named URL for that record.
-      # * <tt>String starting with protocol:// (like http://)</tt>: Is passed straight through as the target for redirection.
-      # * <tt>String not containing a protocol</tt>: The current protocol and host is prepended to the string.
-      # * <tt>:back</tt>: Back to the page that issued the request. Useful for forms that are triggered from multiple places.
+      # * <tt>Hash</tt> - The URL will be generated by calling url_for with the +options+.
+      # * <tt>Record</tt> - The URL will be generated by calling url_for with the +options+, which will reference a named URL for that record.
+      # * <tt>String starting with protocol:// (like http://)</tt> - Is passed straight through as the target for redirection.
+      # * <tt>String not containing a protocol</tt> - The current protocol and host is prepended to the string.
+      # * <tt>:back</tt> - Back to the page that issued the request. Useful for forms that are triggered from multiple places.
       #   Short-hand for redirect_to(request.env["HTTP_REFERER"])
       #
       # Examples:
@@ -982,32 +1005,47 @@ module ActionController #:nodoc:
       #   redirect_to "/images/screenshot.jpg"
       #   redirect_to :back
       #
-      # The redirection happens as a "302 Moved" header.
+      # The redirection happens as a "302 Moved" header unless otherwise specified. 
+      #
+      # Examples:
+      #   redirect_to post_url(@post), :status=>:found
+      #   redirect_to :action=>'atom', :status=>:moved_permanently
+      #   redirect_to post_url(@post), :status=>301
+      #   redirect_to :action=>'atom', :status=>302
       #
       # When using <tt>redirect_to :back</tt>, if there is no referrer,
       # RedirectBackError will be raised. You may specify some fallback
       # behavior for this case by rescuing RedirectBackError.
-      def redirect_to(options = {}) #:doc:
+      def redirect_to(options = {}, response_status = {}) #:doc: 
+        
+        if options.is_a?(Hash) && options[:status] 
+          status = options.delete(:status) 
+        elsif response_status[:status] 
+          status = response_status[:status] 
+        else 
+          status = 302 
+        end
+        
         case options
           when %r{^\w+://.*}
             raise DoubleRenderError if performed?
-            logger.info("Redirected to #{options}") if logger
-            response.redirect(options)
+            logger.info("Redirected to #{options}") if logger && logger.info?
+            response.redirect(options, interpret_status(status))
             response.redirected_to = options
             @performed_redirect = true
 
           when String
-            redirect_to(request.protocol + request.host_with_port + options)
+            redirect_to(request.protocol + request.host_with_port + options, :status=>status)
 
           when :back
-            request.env["HTTP_REFERER"] ? redirect_to(request.env["HTTP_REFERER"]) : raise(RedirectBackError)
+            request.env["HTTP_REFERER"] ? redirect_to(request.env["HTTP_REFERER"], :status=>status) : raise(RedirectBackError)
 
           when Hash
-            redirect_to(url_for(options))
+            redirect_to(url_for(options), :status=>status)
             response.redirected_to = options
 
           else
-            redirect_to(url_for(options))
+            redirect_to(url_for(options), :status=>status)
         end
       end
 
@@ -1092,22 +1130,26 @@ module ActionController #:nodoc:
       end
 
       def log_processing
-        if logger
+        if logger && logger.info?
           logger.info "\n\nProcessing #{controller_class_name}\##{action_name} (for #{request_origin}) [#{request.method.to_s.upcase}]"
           logger.info "  Session ID: #{@_session.session_id}" if @_session and @_session.respond_to?(:session_id)
           logger.info "  Parameters: #{respond_to?(:filter_parameters) ? filter_parameters(params).inspect : params.inspect}"
         end
       end
 
+      def default_render #:nodoc:
+        render
+      end
+
       def perform_action
         if self.class.action_methods.include?(action_name)
           send(action_name)
-          render unless performed?
+          default_render unless performed?
         elsif respond_to? :method_missing
-          send(:method_missing, action_name)
-          render unless performed?
+          method_missing action_name
+          default_render unless performed?
         elsif template_exists? && template_public?
-          render
+          default_render
         else
           raise UnknownAction, "No action responded to #{action_name}", caller
         end
@@ -1135,7 +1177,7 @@ module ActionController #:nodoc:
       end
 
       def self.action_methods
-        @action_methods ||= Set.new(public_instance_methods - hidden_actions)
+        @action_methods ||= Set.new(public_instance_methods.map(&:to_s)) - hidden_actions
       end
 
       def add_variables_to_assigns
@@ -1204,7 +1246,7 @@ module ActionController #:nodoc:
       def template_exempt_from_layout?(template_name = default_template_name)
         extension = @template && @template.pick_template_extension(template_name)
         name_with_extension = !template_name.include?('.') && extension ? "#{template_name}.#{extension}" : template_name
-        extension == :rjs || @@exempt_from_layout.any? { |ext| name_with_extension =~ ext }
+        @@exempt_from_layout.any? { |ext| name_with_extension =~ ext }
       end
 
       def assert_existence_of_template_file(template_name)

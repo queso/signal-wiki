@@ -91,6 +91,8 @@ class ActiveRecordHelperTest < Test::Unit::TestCase
     setup_post
     setup_user
 
+    @response = ActionController::TestResponse.new
+    
     @controller = Object.new
     def @controller.url_for(options)
       options = options.symbolize_keys
@@ -139,6 +141,13 @@ class ActiveRecordHelperTest < Test::Unit::TestCase
     )
   end
 
+  def test_form_with_action_option
+    @response.body = form("post", :action => "sign")
+    assert_select "form[action=sign]" do |form|
+      assert_select "input[type=submit][value=Sign]"
+    end
+  end
+
   def test_form_with_date
     silence_warnings do
       def Post.content_columns() [ Column.new(:date, "written_on", "Written on") ] end
@@ -181,6 +190,11 @@ class ActiveRecordHelperTest < Test::Unit::TestCase
     assert_dom_equal "<div class=\"formError\">can't be empty</div>", error_message_on(:post, :author_name)
   end
 
+  def test_error_message_on_no_instance_variable
+    other_post = @post
+    assert_dom_equal "<div class=\"formError\">can't be empty</div>", error_message_on(other_post, :author_name)
+  end
+  
   def test_error_message_on_should_use_options
     assert_dom_equal "<div class=\"differentError\">beforecan't be emptyafter</div>", error_message_on(:post, :author_name, "before", "after", "differentError")
   end
@@ -202,8 +216,32 @@ class ActiveRecordHelperTest < Test::Unit::TestCase
 
     # should space object name
     assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><h2>2 errors prohibited this chunky bacon from being saved</h2><p>There were problems with the following fields:</p><ul><li>User email can't be empty</li><li>Author name can't be empty</li></ul></div>), error_messages_for(:user, :post, :object_name => "chunky_bacon")
-  end
 
+    # hide header and explanation messages with nil or empty string
+    assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><ul><li>User email can't be empty</li><li>Author name can't be empty</li></ul></div>), error_messages_for(:user, :post, :header_message => nil, :message => "")
+
+    # override header and explanation messages
+    header_message = "Yikes! Some errors"
+    message = "Please fix the following fields and resubmit:"
+    assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><h2>#{header_message}</h2><p>#{message}</p><ul><li>User email can't be empty</li><li>Author name can't be empty</li></ul></div>), error_messages_for(:user, :post, :header_message => header_message, :message => message)
+  end
+  
+  def test_error_messages_for_non_instance_variable
+    actual_user = @user
+    actual_post = @post
+    @user = nil
+    @post = nil
+
+  #explicitly set object
+    assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><h2>1 error prohibited this post from being saved</h2><p>There were problems with the following fields:</p><ul><li>Author name can't be empty</li></ul></div>), error_messages_for("post", :object => actual_post)
+      
+  #multiple objects
+    assert_dom_equal %(<div class="errorExplanation" id="errorExplanation"><h2>2 errors prohibited this user from being saved</h2><p>There were problems with the following fields:</p><ul><li>User email can't be empty</li><li>Author name can't be empty</li></ul></div>), error_messages_for("user", "post", :object => [actual_user, actual_post])
+    
+  #nil object
+    assert_equal '', error_messages_for('user', :object => nil)
+  end
+  
   def test_form_with_string_multipart
     assert_dom_equal(
       %(<form action="create" enctype="multipart/form-data" method="post"><p><label for="post_title">Title</label><br /><input id="post_title" name="post[title]" size="30" type="text" value="Hello World" /></p>\n<p><label for="post_body">Body</label><br /><div class="fieldWithErrors"><textarea cols="40" id="post_body" name="post[body]" rows="20">Back to the hill and over it again!</textarea></div></p><input name="commit" type="submit" value="Create" /></form>),

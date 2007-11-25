@@ -1,5 +1,5 @@
 class Time
-  def to_json #:nodoc:
-    %("#{strftime("%m/%d/%Y %H:%M:%S %Z")}")
+  def to_json(options = nil) #:nodoc:
+    to_datetime.to_json(options)
   end
 end

@@ -13,8 +13,9 @@ class TestJSONEncoding < Test::Unit::TestCase
   NumericTests  = [[ 1,     %(1)     ],
                    [ 2.5,   %(2.5)   ]]
 
-  StringTests   = [[ 'this is the <string>',     %("this is the \\074string\\076")],
-                   [ 'a "string" with quotes', %("a \\"string\\" with quotes") ]]
+  StringTests   = [[ 'this is the <string>',     %("this is the \\u003Cstring\\u003E")],
+                   [ 'a "string" with quotes & an ampersand', %("a \\"string\\" with quotes \\u0026 an ampersand") ],
+                   [ 'http://test.host/posts/1', %("http:\\/\\/test.host\\/posts\\/1")]]
 
   ArrayTests    = [[ ['a', 'b', 'c'],          %([\"a\", \"b\", \"c\"])          ],
                    [ [1, 'a', :b, nil, false], %([1, \"a\", \"b\", null, false]) ]]
@@ -29,9 +30,9 @@ class TestJSONEncoding < Test::Unit::TestCase
                    [ ActiveSupport::JSON::Variable.new('alert("foo")'), 'alert("foo")']]
   RegexpTests   = [[ /^a/, '/^a/' ], [/^\w{1,2}[a-z]+/ix, '/^\\w{1,2}[a-z]+/ix']]
 
-  DateTests     = [[ Date.new(2005,1,1), %("01/01/2005") ]]
-  TimeTests     = [[ Time.at(0), %("#{Time.at(0).strftime('%m/%d/%Y %H:%M:%S %Z')}") ]]
-  DateTimeTests = [[ DateTime.new(0), %("#{DateTime.new(0).strftime('%m/%d/%Y %H:%M:%S %Z')}") ]]
+  DateTests     = [[ Date.new(2005,2,1), %("2005/02/01") ]]
+  TimeTests     = [[ Time.utc(2005,2,1,15,15,10), %("2005/02/01 15:15:10 +0000") ]]
+  DateTimeTests = [[ DateTime.civil(2005,2,1,15,15,10), %("2005/02/01 15:15:10 +0000") ]]
 
   constants.grep(/Tests$/).each do |class_tests|
     define_method("test_#{class_tests[0..-6].downcase}") do
@@ -45,6 +46,7 @@ class TestJSONEncoding < Test::Unit::TestCase
     assert_equal %({\"a\": \"b\"}), { :a => :b }.to_json
     assert_equal %({\"a\": 1}), { 'a' => 1  }.to_json
     assert_equal %({\"a\": [1, 2]}), { 'a' => [1,2] }.to_json
+    assert_equal %({1: 2}), { 1 => 2 }.to_json
 
     sorted_json = '{' + {:a => :b, :c => :d}.to_json[1..-2].split(', ').sort.join(', ') + '}'
     assert_equal %({\"a\": \"b\", \"c\": \"d\"}), sorted_json
@@ -69,8 +71,29 @@ class TestJSONEncoding < Test::Unit::TestCase
     assert_equal %w( "$" "A" "A0" "A0B" "_" "a" 0 1 ), object_keys(values.to_json)
   end
 
+  def test_hash_should_allow_key_filtering_with_only
+    assert_equal %({"a": 1}), { 'a' => 1, :b => 2, :c => 3 }.to_json(:only => 'a')
+  end
+
+  def test_hash_should_allow_key_filtering_with_except
+    assert_equal %({"b": 2}), { 'foo' => 'bar', :b => 2, :c => 3 }.to_json(:except => ['foo', :c])
+  end
+
   protected
     def object_keys(json_object)
       json_object[1..-2].scan(/([^{}:,\s]+):/).flatten.sort
     end
+end
+
+uses_mocha 'JsonOptionsTests' do
+  class JsonOptionsTests < Test::Unit::TestCase
+    def test_enumerable_should_passthrough_options_to_elements
+      json_options = { :include => :posts }
+      ActiveSupport::JSON.expects(:encode).with(1, json_options)
+      ActiveSupport::JSON.expects(:encode).with(2, json_options)
+      ActiveSupport::JSON.expects(:encode).with('foo', json_options)
+
+      [1, 2, 'foo'].to_json(json_options)
+    end
+  end
 end

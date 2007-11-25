@@ -27,6 +27,10 @@ module ActionController #:nodoc:
   # * <tt>http_only</tt> - whether this cookie is accessible via scripting or only HTTP (defaults to false).
   
   module Cookies
+    def self.included(base)
+      base.helper_method :cookies
+    end
+
     protected
       # Returns the cookie container, which operates as described above.
       def cookies
@@ -44,7 +48,10 @@ module ActionController #:nodoc:
     # Returns the value of the cookie by +name+ -- or nil if no such cookie exists. You set new cookies using cookies[]=
     # (for simple name/value cookies without options).
     def [](name)
-      @cookies[name.to_s].value.first if @cookies[name.to_s] && @cookies[name.to_s].respond_to?(:value)
+      cookie = @cookies[name.to_s]
+      if cookie && cookie.respond_to?(:value)
+        cookie.size > 1 ? cookie.value : cookie.value.to_s
+      end 
     end
 
     def []=(name, options)

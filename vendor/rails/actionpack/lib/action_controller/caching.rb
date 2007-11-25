@@ -100,9 +100,8 @@ module ActionController #:nodoc:
         # matches the triggering url.
         def caches_page(*actions)
           return unless perform_caching
-          actions.each do |action|
-            class_eval "after_filter { |c| c.cache_page if c.action_name == '#{action}' }"
-          end
+          actions = actions.map(&:to_s)
+          after_filter { |c| c.cache_page if actions.include?(c.action_name) }
         end
 
         private
@@ -238,7 +237,7 @@ module ActionController #:nodoc:
           if cache = controller.read_fragment(cache_path.path)
             controller.rendered_action_cache = true
             set_content_type!(controller, cache_path.extension)
-            controller.send(:render_for_text, cache)
+            controller.send!(:render_for_text, cache)
             false
           else
             controller.action_cache_path = cache_path
@@ -252,7 +251,7 @@ module ActionController #:nodoc:
 
         private
           def set_content_type!(controller, extension)
-            controller.response.content_type = Mime::EXTENSION_LOOKUP[extension].to_s if extension
+            controller.response.content_type = Mime::Type.lookup_by_extension(extension).to_s if extension
           end
 
           def path_options_for(controller, options)
@@ -470,7 +469,7 @@ module ActionController #:nodoc:
           super
           if ActionController::Base.allow_concurrency
             @mutex = Mutex.new
-            MemoryStore.send(:include, ThreadSafety)
+            MemoryStore.module_eval { include ThreadSafety }
           end
         end
       end
@@ -485,6 +484,8 @@ module ActionController #:nodoc:
         end
       end
 
+    begin
+      require_library_or_gem 'memcache'
       class MemCacheStore < MemoryStore #:nodoc:
         attr_reader :addresses
 
@@ -496,6 +497,9 @@ module ActionController #:nodoc:
           @data = MemCache.new(*addresses)
         end
       end
+    rescue LoadError
+      # MemCache wasn't available so neither can the store be
+    end
 
       class UnthreadedFileStore #:nodoc:
         attr_reader :cache_path
@@ -560,7 +564,7 @@ module ActionController #:nodoc:
             super(cache_path)
             if ActionController::Base.allow_concurrency
               @mutex = Mutex.new
-              FileStore.send(:include, ThreadSafety)
+              FileStore.module_eval { include ThreadSafety }
             end
           end
         end
@@ -642,13 +646,13 @@ module ActionController #:nodoc:
             controller_callback_method_name = "#{timing}_#{controller.controller_name.underscore}"
             action_callback_method_name     = "#{controller_callback_method_name}_#{controller.action_name}"
 
-            send(controller_callback_method_name) if respond_to?(controller_callback_method_name)
-            send(action_callback_method_name)     if respond_to?(action_callback_method_name)
+            send!(controller_callback_method_name) if respond_to?(controller_callback_method_name, true)
+            send!(action_callback_method_name)     if respond_to?(action_callback_method_name, true)
           end
 
           def method_missing(method, *arguments)
             return if @controller.nil?
-            @controller.send(method, *arguments)
+            @controller.send!(method, *arguments)
           end
       end
     end

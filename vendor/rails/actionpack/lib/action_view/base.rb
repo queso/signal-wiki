@@ -1,4 +1,5 @@
 require 'erb'
+require 'builder'
 
 class ERB
   module Util
@@ -286,7 +287,7 @@ module ActionView #:nodoc:
             raise ActionViewError, "No #{template_handler_preferences.to_sentence} template found for #{template_path} in #{view_paths.inspect}"
           end
           template_file_name = full_template_path(template_path, template_extension)
-          template_extension = template_extension.gsub(/^\w+\./, '') # strip off any formats
+          template_extension = template_extension.gsub(/^.+\./, '') # strip off any formats
         end
       else
         template_file_name = template_path
@@ -385,7 +386,7 @@ module ActionView #:nodoc:
     #
     def full_template_path(template_path, extension)
       if @@cache_template_extensions
-        (@@cached_base_paths[template_path] ||= {})[extension.to_s] = find_full_template_path(template_path, extension)
+        (@@cached_base_paths[template_path] ||= {})[extension.to_s] ||= find_full_template_path(template_path, extension)
       else
         find_full_template_path(template_path, extension)
       end
@@ -489,7 +490,9 @@ module ActionView #:nodoc:
 
       # Determines the template's file extension, such as rhtml, rxml, or rjs.
       def find_template_extension_for(template_path)
-        find_template_extension_from_handler(template_path, true) || find_template_extension_from_handler(template_path)
+        find_template_extension_from_handler(template_path, true) ||
+        find_template_extension_from_handler(template_path) ||
+        find_template_extension_from_first_render()
       end
 
       def find_template_extension_from_handler(template_path, formatted = nil)
@@ -509,6 +512,11 @@ module ActionView #:nodoc:
           end
         end
         nil
+      end
+      
+      # Determine the template extension from the <tt>@first_render</tt> filename
+      def find_template_extension_from_first_render
+        File.basename(@first_render.to_s)[/^[^.]+\.(.+)$/, 1]
       end
 
       # This method reads a template file.
@@ -571,7 +579,8 @@ module ActionView #:nodoc:
         if template_requires_setup?(extension)
           body = case extension.to_sym
             when :rxml, :builder
-              "controller.response.content_type ||= Mime::XML\n" +
+              content_type_handler = (controller.respond_to?(:response) ? "controller.response" : "controller")
+              "#{content_type_handler}.content_type ||= Mime::XML\n" +
               "xml = Builder::XmlMarkup.new(:indent => 2)\n" +
               template +
               "\nxml.target!\n"

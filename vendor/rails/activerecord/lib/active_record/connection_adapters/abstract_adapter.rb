@@ -63,6 +63,19 @@ module ActiveRecord
         rt
       end
 
+      # QUOTING ==================================================
+
+      # Override to return the quoted table name if the database needs it
+      def quote_table_name(name)
+        name
+      end
+
+      # REFERENTIAL INTEGRITY ====================================
+
+      # Override to turn off referential integrity while executing +&block+
+      def disable_referential_integrity(&block)
+        yield
+      end
 
       # CONNECTION MANAGEMENT ====================================
 
@@ -114,7 +127,7 @@ module ActiveRecord
       protected
         def log(sql, name)
           if block_given?
-            if @logger and @logger.level <= Logger::INFO
+            if @logger and @logger.debug?
               result = nil
               seconds = Benchmark.realtime { result = yield }
               @runtime += seconds

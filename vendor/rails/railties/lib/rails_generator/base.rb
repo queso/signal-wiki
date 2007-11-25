@@ -26,13 +26,14 @@ module Rails
   # +controller+ generator:
   #   
   #   generators/
-  #     controller/
-  #       controller_generator.rb
-  #       templates/
-  #         controller.rb
-  #         functional_test.rb
-  #         helper.rb
-  #         view.rhtml
+  #     components/
+  #       controller/
+  #         controller_generator.rb
+  #         templates/
+  #           controller.rb
+  #           functional_test.rb
+  #           helper.rb
+  #           view.html.erb
   #
   # The directory name (+controller+) matches the name of the generator file
   # (controller_generator.rb) and class (+ControllerGenerator+). The files
@@ -229,6 +230,7 @@ module Rails
           base_name, @class_path, @file_path, @class_nesting, @class_nesting_depth = extract_modules(@name)
           @class_name_without_nesting, @singular_name, @plural_name = inflect_names(base_name)
           @table_name = (!defined?(ActiveRecord::Base) || ActiveRecord::Base.pluralize_table_names) ? plural_name : singular_name
+          @table_name.gsub! '/', '_'
           if @class_nesting.empty?
             @class_name = @class_name_without_nesting
           else

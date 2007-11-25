@@ -136,6 +136,25 @@ module ActionView
       #                          default this is the current form, but
       #                          it could just as well be the ID of a
       #                          table row or any other DOM element.
+      # <tt>:with</tt>::         A JavaScript expression specifying
+      #                          the parameters for the XMLHttpRequest.
+      #                          Any expressions should return a valid
+      #                          URL query string.
+      #
+      #                          Example:
+      #                          
+      #                            :with => "'name=' + $('name').value"
+      #
+      # You can generate a link that uses AJAX in the general case, while 
+      # degrading gracefully to plain link behavior in the absence of
+      # JavaScript by setting <tt>html_options[:href]</tt> to an alternate URL.
+      # Note the extra curly braces around the <tt>options</tt> hash separate
+      # it as the second parameter from <tt>html_options</tt>, the third.
+      #
+      # Example:
+      #   link_to_remote "Delete this post",
+      #     { :update => "posts", :url => { :action => "destroy", :id => post.id } },
+      #     :href => url_for(:action => "destroy", :id => post.id)
       def link_to_remote(name, options = {}, html_options = nil)  
         link_to_function(name, remote_function(options), html_options || options.delete(:html))
       end
@@ -315,7 +334,16 @@ module ActionView
       # <tt>:url</tt>::       +url_for+-style options for the action to call
       #                       when the field has changed.
       # <tt>:function</tt>::  Instead of making a remote call to a URL, you
-      #                       can specify a function to be called instead.
+      #                       can specify javascript code to be called instead.
+      #                       Note that the value of this option is used as the
+      #                       *body* of the javascript function, a function definition
+      #                       with parameters named element and value will be generated for you
+      #                       for example:
+      #                         observe_field("glass", :frequency => 1, :function => "alert('Element changed')")
+      #                       will generate:
+      #                         new Form.Element.Observer('glass', 1, function(element, value) {alert('Element changed')})
+      #                       The element parameter is the DOM element being observed, and the value is its value at the
+      #                       time the observer is triggered.
       # 
       # Additional options are:
       # <tt>:frequency</tt>:: The frequency (in seconds) at which changes to
@@ -785,7 +813,7 @@ module ActionView
     end
 
     # Converts chained method calls on DOM proxy elements into JavaScript chains 
-    class JavaScriptProxy < Builder::BlankSlate #:nodoc:
+    class JavaScriptProxy < BasicObject #:nodoc:
       def initialize(generator, root = nil)
         @generator = generator
         @generator << root if root
@@ -867,7 +895,7 @@ module ActionView
         true
       end
 
-      def to_json
+      def to_json(options = nil)
         @variable
       end
       

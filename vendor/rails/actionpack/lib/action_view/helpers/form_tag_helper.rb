@@ -207,7 +207,7 @@ module ActionView
       # Creates a text input area; use a textarea for longer text inputs such as blog posts or descriptions.
       #
       # ==== Options
-      # * <tt>:size</tt> - A string specifying the dimensions of the textarea using dimensions (e.g., "25x10").
+      # * <tt>:size</tt> - A string specifying the dimensions (columns by rows) of the textarea (e.g., "25x10").
       # * <tt>:rows</tt> - Specify the number of rows in the textarea
       # * <tt>:cols</tt> - Specify the number of columns in the textarea
       # * <tt>:disabled</tt> - If set to true, the user will not be able to use this input.
@@ -361,7 +361,7 @@ module ActionView
       #   image_submit_tag("agree.png"), :disabled => true, :class => "agree-disagree-button"
       #   # => <input class="agree-disagree-button" disabled="disabled" src="/images/agree.png" type="image" />
       def image_submit_tag(source, options = {})
-        tag :input, { "type" => "image", "src" => image_path(source) }.update(options.stringify_keys)
+        tag :input, { "type" => "image", "src" => path_to_image(source) }.update(options.stringify_keys)
       end
 
       # Creates a field set for grouping HTML form elements.
