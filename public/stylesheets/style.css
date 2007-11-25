@@ -80,12 +80,13 @@ a {
 #container {
 	margin: 15px 50px;
 	padding: 20px;
-
+	min-width: 970px;
 }
 
 #main {
 	float: left;
-	width: 700px;
+	width: 600px;
+	min-width: 400px;
 	margin: 0;
 	padding: 20px;
 	background: white;
@@ -103,9 +104,11 @@ a {
 ******************************************************************/
 
 #right {
-	float: right;
-	width: 200px;
-	margin: 0 50px;
+	float: left;
+	margin-left:3%;
+	margin-right:0pt;
+	margin-top:1em;
+	width:19%;
 }
 
 #right h5 {
