@@ -122,9 +122,7 @@ class PagesController < ApplicationController
   # DELETE /pages/1
   # DELETE /pages/1.xml
   def destroy
-    @page = Page.find(params[:id])
-    @page.destroy
-
+    @page = Page.find(params[:id]).destroy
     respond_to do |format|
       format.html { redirect_to(pages_url) }
       format.xml  { head :ok }
