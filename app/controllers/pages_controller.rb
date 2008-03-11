@@ -140,6 +140,7 @@ class PagesController < ApplicationController
     end
   end
   
+  #FIXME: Remove this and add a manual cache call for pages we want cached, in the show method.
   def caching_allowed
     if @page
       ! @page.private_page
