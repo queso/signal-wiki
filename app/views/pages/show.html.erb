@@ -12,5 +12,12 @@
 	<li><%= link_to('View previous revision', revision_page_url(:id => @page.permalink, :version => (@page.version - 1) )) if (@page.versions.size > 1 && @page.version > 1) %></li>
 	<li><%= link_to 'Return to home', pages_path unless @page.permalink == "home" %></li>
 	<li><%= link_to "Delete this page and all revisions", page_path(@page), :method => :delete %></li>
+	<li>Inbound links:
+	  <ul>
+	    <% @page.inbound_links.each do |link| -%>
+	    <li><%= link_to link.from_page.title, link.from_page %> 
+	    <% end %>
+	  </ul>
+  </li>
 </ul>
 <% end -%>
