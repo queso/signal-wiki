@@ -8,12 +8,12 @@ class PagesController < ApplicationController
   # GET /pages
   # GET /pages.xml
   def index
-    redirect_to wiki_page_url("home")
-
-    #respond_to do |format|
-    #  format.html # index.html.erb
-    #  format.xml  { render :xml => @pages }
-    #end
+    @pages = Page.find(:all, :limit => 20, :order => "updated_at DESC")
+    # todo: paginate
+    respond_to do |format|
+      format.html # index.html.erb
+      format.xml  { render :xml => @pages }
+    end
   end
 
   # GET /pages/1
