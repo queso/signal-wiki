@@ -73,7 +73,7 @@ ActiveRecord::Schema.define(:version => 13) do
     t.boolean  "private_page"
     t.integer  "version"
     t.integer  "site_id"
-    t.boolean  "locked"
+    t.datetime "locked_at"
   end
 
   create_table "sites", :force => true do |t|

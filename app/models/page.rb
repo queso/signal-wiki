@@ -22,7 +22,7 @@ class Page < ActiveRecord::Base
   has_many :inbound_links,  :class_name => "Link", :foreign_key => "to_page_id"
   has_many :outbound_links, :class_name => "Link", :foreign_key => "from_page_id"
   acts_as_versioned
-  self.non_versioned_columns << 'locked'
+  self.non_versioned_columns << 'locked_at'
   attr_accessor :ip, :agent, :referrer
   acts_as_indexed :fields => [:title, :body, :author]
   
@@ -81,14 +81,14 @@ class Page < ActiveRecord::Base
   
   def lock
     self.without_revision do
-      self.update_attribute(:locked, true)
+      self.update_attribute(:locked_at, Time.now)
     end
     RAILS_DEFAULT_LOGGER.info "LOCKED #{self.permalink}"
   end
   
   def unlock
     self.without_revision do
-      self.update_attribute(:locked, false)
+      self.update_attribute(:locked_at, nil)
     end
     RAILS_DEFAULT_LOGGER.info "UNLOCKED #{self.permalink}"
   end
@@ -102,7 +102,7 @@ class Page < ActiveRecord::Base
   private
   
   def updatable
-    if self.locked
+    unless self.locked_at.nil?
       errors.add("page", "is locked from editing.")
     end
   end

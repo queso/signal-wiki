@@ -49,11 +49,19 @@ describe Page, "locking pages" do
     @page1 = Page.create! :title => "outbound", :permalink => "outbound", :body => "empty", :site_id => 1
   end
   
-  it "lock a page" do
+  it "edit a locked page" do
     @page1.lock
     @page1.body = "Blah blah"
     @page1.save
     @page1.should_not be_valid
+  end
+  
+  it "edit an unlocked page" do
+    @page1.lock
+    @page1.unlock
+    @page1.body = "Blah blah"
+    @page1.save
+    @page1.should be_valid
   end
   
 end
