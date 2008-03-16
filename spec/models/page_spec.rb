@@ -56,7 +56,7 @@ describe Page, "locking pages" do
     @page1.should_not be_valid
   end
   
-  it "edit an unlocked page" do
+  it "edit a previous locked but now unlocked page" do
     @page1.lock
     @page1.unlock
     @page1.body = "Blah blah"
