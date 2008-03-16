@@ -41,3 +41,19 @@ describe Page, "creating links" do
   end
   
 end  
+
+describe Page, "locking pages" do
+  fixtures :sites
+  
+  before do
+    @page1 = Page.create! :title => "outbound", :permalink => "outbound", :body => "empty", :site_id => 1
+  end
+  
+  it "lock a page" do
+    @page1.lock
+    @page1.body = "Blah blah"
+    @page1.save
+    @page1.should_not be_valid
+  end
+  
+end

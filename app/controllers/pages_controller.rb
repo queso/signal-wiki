@@ -129,6 +129,18 @@ class PagesController < ApplicationController
     end
   end
   
+  def lock
+    @page = site.pages.find_by_permalink(params[:id])
+    if @page.locked?
+      @page.unlock
+    else
+      @page.lock
+    end
+    respond_to do |format|
+      format.html { redirect_to(wiki_page_url(@page)) }
+      format.xml  { head :ok }
+    end
+  end
   
   def check_private
     @page = site.pages.find_by_permalink(params[:id])
