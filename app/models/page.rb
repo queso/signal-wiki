@@ -1,5 +1,5 @@
 # == Schema Information
-# Schema version: 10
+# Schema version: 12
 #
 # Table name: pages
 #
@@ -12,6 +12,7 @@
 #  updated_at   :datetime      
 #  private_page :boolean       
 #  version      :integer       
+#  site_id      :integer       
 #
 
 class Page < ActiveRecord::Base
