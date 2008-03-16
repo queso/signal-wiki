@@ -76,7 +76,8 @@ class Page < ActiveRecord::Base
     (user && user.login) ? user.login.to_s.capitalize : "Anonymous"
   end
   
-  def self.find_all_by_wiki_word(wiki_word)
+  def self.find_all_by_wiki_word(wiki_word, site = nil)
+    site ||= Site.find(:first)
     pages = site.pages.find(:all)
     pages.select {|p| p.body =~ /#{wiki_word}/i}
   end
