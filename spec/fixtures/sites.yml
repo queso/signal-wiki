@@ -1,0 +1,6 @@
+# Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
+first:
+  id: 1
+  title: RoR
+  created_at: 2008-03-15 10:28:00
+  updated_at: 2008-03-15 10:28:00

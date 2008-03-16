@@ -16,14 +16,19 @@
 
 class Page < ActiveRecord::Base
   belongs_to :user
+  belongs_to :site
+  has_many :inbound_links,  :class_name => "Link", :foreign_key => "to_page_id"
+  has_many :outbound_links, :class_name => "Link", :foreign_key => "from_page_id"
   acts_as_versioned
   attr_accessor :ip, :agent, :referrer
   acts_as_indexed :fields => [:title, :body, :author]
   
   before_save :set_permalink
- 
+  before_update :set_links
+  after_create  :set_links
+  validates_presence_of :title, :body
+
   def validate
-    site = Site.find(:first)
     if site.akismet_key? && is_spam?(site)
       errors.add_to_base "Your comment was marked as spam, please contact the site admin if you feel this was a mistake."
     end
@@ -48,6 +53,22 @@ class Page < ActiveRecord::Base
     end
   end
   
+  def set_links
+    Link.transaction do
+      # outbound_links.delete_all
+      body.scan(/\[\[(.*?)\]\]/).each do |link|
+        link = link[0].downcase.gsub(' ', '-')
+        $stderr.puts link.inspect
+        logger.warn link.inspect
+        if page = site.pages.find_by_permalink(link)
+          Link.create! :from_page_id => id, :to_page_id => page.id
+        else
+          raise "No page here"
+        end
+      end
+    end
+  end
+  
   def to_param
     self.permalink
   end
@@ -57,7 +78,7 @@ class Page < ActiveRecord::Base
   end
   
   def self.find_all_by_wiki_word(wiki_word)
-    pages = self.find(:all)
+    pages = site.pages.find(:all)
     pages.select {|p| p.body =~ /#{wiki_word}/i}
   end
   

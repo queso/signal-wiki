@@ -8,18 +8,18 @@ class PagesController < ApplicationController
   # GET /pages
   # GET /pages.xml
   def index
-    redirect_to wiki_page_url("home")
-
-    #respond_to do |format|
-    #  format.html # index.html.erb
-    #  format.xml  { render :xml => @pages }
-    #end
+    @pages = site.pages.find(:all, :limit => 20, :order => "updated_at DESC")
+    # todo: paginate
+    respond_to do |format|
+      format.html # index.html.erb
+      format.xml  { render :xml => @pages }
+    end
   end
 
   # GET /pages/1
   # GET /pages/1.xml
   def show
-    @page = Page.find_by_permalink(params[:id] || "home")
+    @page = site.pages.find_by_permalink(params[:id] || "home")
     
     
     if @page
@@ -34,8 +34,8 @@ class PagesController < ApplicationController
   end
 
   def revision
-    @page = Page.find_by_permalink(params[:id])
-    @page = Page.find_version(@page.id, params[:version])
+    @page = site.pages.find_by_permalink(params[:id])
+    @page = site.pages.find_version(@page.id, params[:version])
     
     respond_to do |format|
       format.html
@@ -45,7 +45,7 @@ class PagesController < ApplicationController
   # GET /pages/new
   # GET /pages/new.xml
   def new
-    @page = Page.new(:title => session[:new_title].to_s.gsub("-", " ").capitalize, :permalink => session[:new_title])
+    @page = site.pages.new(:title => session[:new_title].to_s.gsub("-", " ").capitalize, :permalink => session[:new_title])
     @attachments = Attachment.find_parent(:all)
     @button_text = "Add this page"
     respond_to do |format|
@@ -56,7 +56,7 @@ class PagesController < ApplicationController
 
   # GET /pages/1/edit
   def edit
-    @page = Page.find_by_permalink(params[:id])
+    @page = site.pages.find_by_permalink(params[:id])
     @attachments = Attachment.find_parent(:all)
     @button_text = "Save this version"
   end
@@ -64,7 +64,7 @@ class PagesController < ApplicationController
   # POST /pages
   # POST /pages.xml
   def create
-    @page = Page.new(params[:page])
+    @page = site.pages.new(params[:page])
     @page.request = request
     @page.user = logged_in? ? current_user : User.new
 
@@ -83,7 +83,7 @@ class PagesController < ApplicationController
   # PUT /pages/1
   # PUT /pages/1.xml
   def update
-    @page = Page.find_by_permalink(params[:id])
+    @page = site.pages.find_by_permalink(params[:id])
     @page.request = request
     @page.user = logged_in? ? current_user : User.new
     
@@ -100,7 +100,7 @@ class PagesController < ApplicationController
   end
 
   def rollback
-    @page = Page.find_by_permalink(params[:id])
+    @page = site.pages.find_by_permalink(params[:id])
     @page.revert_to!(params[:version])
     expire_page("/#{@page.permalink}")
     respond_to do |format|
@@ -111,7 +111,7 @@ class PagesController < ApplicationController
   end
 
   def search
-    @pages = Page.find_with_index("#{params[:query]}")
+    @pages = site.pages.find_with_index("#{params[:query]}")
     respond_to do |format|
       format.html
       format.xml
@@ -122,7 +122,7 @@ class PagesController < ApplicationController
   # DELETE /pages/1
   # DELETE /pages/1.xml
   def destroy
-    @page = Page.find_by_permalink(params[:id]).destroy
+    @page = site.pages.find_by_permalink(params[:id]).destroy
     respond_to do |format|
       format.html { redirect_to(pages_url) }
       format.xml  { head :ok }
@@ -131,7 +131,7 @@ class PagesController < ApplicationController
   
   
   def check_private
-    @page = Page.find_by_permalink(params[:id])
+    @page = site.pages.find_by_permalink(params[:id])
     return unless @page
     if @page.private_page
       login_required

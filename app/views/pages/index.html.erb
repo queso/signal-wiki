@@ -3,7 +3,7 @@
 
 <ul>
 <% for page in @pages %>
-	<li><%= page.title %></li>
+	<li><%= link_to page.title, page %></li>
 <% end %>
 </ul>
 

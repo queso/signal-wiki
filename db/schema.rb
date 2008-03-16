@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 10) do
+ActiveRecord::Schema.define(:version => 12) do
 
   create_table "attachments", :force => true do |t|
     t.integer  "size"
@@ -20,6 +20,13 @@ ActiveRecord::Schema.define(:version => 10) do
     t.integer  "parent_id"
     t.string   "thumbnail"
     t.integer  "page_id"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "links", :force => true do |t|
+    t.integer  "from_page_id"
+    t.integer  "to_page_id"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
@@ -53,6 +60,7 @@ ActiveRecord::Schema.define(:version => 10) do
     t.datetime "created_at"
     t.datetime "updated_at"
     t.boolean  "private_page"
+    t.integer  "site_id"
   end
 
   create_table "pages", :force => true do |t|
@@ -64,6 +72,7 @@ ActiveRecord::Schema.define(:version => 10) do
     t.datetime "updated_at"
     t.boolean  "private_page"
     t.integer  "version"
+    t.integer  "site_id"
   end
 
   create_table "sites", :force => true do |t|
