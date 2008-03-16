@@ -59,12 +59,10 @@ class Page < ActiveRecord::Base
       # outbound_links.delete_all
       body.scan(/\[\[(.*?)\]\]/).each do |link|
         link = link[0].downcase.gsub(' ', '-')
-        $stderr.puts link.inspect
-        logger.warn link.inspect
         if page = site.pages.find_by_permalink(link)
           Link.create! :from_page_id => id, :to_page_id => page.id
         else
-          raise "No page here"
+          logger.warn "We couldn't find links for #{link}"
         end
       end
     end
