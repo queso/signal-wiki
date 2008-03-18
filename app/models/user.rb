@@ -1,5 +1,5 @@
 # == Schema Information
-# Schema version: 10
+# Schema version: 13
 #
 # Table name: users
 #
@@ -23,7 +23,7 @@ class User < ActiveRecord::Base
   attr_protected :admin
 
   can_flag
-  has_many :pages
+  has_many :pages, :order => 'title ASC'
 
   validates_presence_of     :login, :email, :if => :not_openid?
   validates_presence_of     :password,                   :if => :password_required?

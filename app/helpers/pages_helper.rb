@@ -2,7 +2,7 @@ module PagesHelper
   
   def wikified_body(body)
     r = RedCloth.new(body)
-    r.gsub!(/\[\[(.*)(\|(.*))?\]\]/) {wiki_link(*$1.split("|"))}
+    r.gsub!(/\[\[(.*)(\|(.*))?\]\]/) {wiki_link(*$1.split("|")[0..1])}
     r.to_html
   end
   

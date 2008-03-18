@@ -33,4 +33,35 @@ describe Page, "creating links" do
     Link.count.should == c+1
     #lambda{ @page2.save! }.should change { Link.count }.by(1)
   end
+  
+  it "creates a new empty wiki link" do
+    @page1.body = "New wiki test [[link]]"
+    @page1.save!
+    @page1.should be_valid
+  end
+  
 end  
+
+describe Page, "locking pages" do
+  fixtures :sites
+  
+  before do
+    @page1 = Page.create! :title => "outbound", :permalink => "outbound", :body => "empty", :site_id => 1
+  end
+  
+  it "edit a locked page" do
+    @page1.lock
+    @page1.body = "Blah blah"
+    @page1.save
+    @page1.should_not be_valid
+  end
+  
+  it "edit a previous locked but now unlocked page" do
+    @page1.lock
+    @page1.unlock
+    @page1.body = "Blah blah"
+    @page1.save
+    @page1.should be_valid
+  end
+  
+end

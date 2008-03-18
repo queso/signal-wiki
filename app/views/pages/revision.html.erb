@@ -10,7 +10,8 @@
 <ul class="meta_info">
 	<li><%= link_to('View previous revision', revision_page_url(:id => @page.permalink, :version => (@page.previous.version))) if @page.previous %></li>
 	<li><%= link_to('View next revision', revision_page_url(:id => @page.permalink, :version => (@page.next.version))) if @page.next %></li>
-	<li><%= link_to "Rollback to this revision", rollback_page_url(:id => @page.permalink, :version => (@page.version)) unless current_revision(@page.page_id, @page.version)%></li>
+	<li><%= link_to "Rollback to this revision", rollback_page_url(:id => @page.permalink, :version => (@page.version)) unless current_revision(@page.page_id, @page.version) || (Page.find(@page.page_id).locked? && !current_user.admin?) %></li>
+	<%# FIXME Clean up this revision link logic %>
 	<li><%= link_to 'Return to current revision', wiki_page_url(@page.permalink) %></li>
 </ul>
 <% end -%>
