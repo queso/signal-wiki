@@ -14,7 +14,23 @@ var LoginForm = {
 
 document.observe("dom:loaded", function(){
   if (Cookie.get('logged_in')) {
-    $$('logged_in').each(Element.show)
-    $$('logged_out').each(Element.hide)
+    insert_flag();
+    insert_nav();
+  } else {
+    $$('#nav .logged_in').each(Element.hide);
   }
+  
 })
+
+function insert_flag() {
+  if (flag = $('flag')) {
+    url = "flaggable_type=" + flag.title.gsub("_", "&flaggable_id=");
+    new Ajax.Updater('flag', '/flags/new?'+url, { asynchronous: true, method: 'get' })
+  }
+}
+function insert_nav() {
+  $$('#nav .logged_in').each(Element.show);
+  $$('#nav .logged_out').each(Element.hide);
+  login = Cookie.get('logged_in').gsub(/\W/m, ""); // hack attack
+  $('login').innerHTML = login;
+}

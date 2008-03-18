@@ -5,7 +5,8 @@
   <% end -%>
   </li>
   <li><%= link_to_function "search", "$('search').toggle(); $('search_box').focus();" %></li>
-	<li class="admin"><%= link_to "settings", site_path %></li>
+	<!-- ><li class="admin"><%= link_to "settings", site_path %></li>-->
+	<li class="logged_in" id="login"></li>
 	<li class="logged_in"><%= link_to "logout", logout_path %></li>
 	<li class="logged_out"><%= link_to "login", login_path %></li>
 	<li class="logged_out"><%= link_to "signup", new_user_path %></li>

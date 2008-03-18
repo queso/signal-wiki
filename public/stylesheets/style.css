@@ -73,10 +73,10 @@ a {
 	font-size: 1.3em;
 }
 
-#nav .logged_in {
+#nav li.logged_in {
   display:none;
 }
-#nav .admin {
+#nav li.admin {
   display:none;
 }
 

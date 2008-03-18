@@ -1,13 +1,6 @@
 <h2><%=h @page.title %></h2>
 
-<div id="flag">Login or sign up to flag this page.</div>
-<script type="text/javascript">
-if (Cookie.get('logged_in'))
-  new Ajax.Updater('flag', '/flags/new?flaggable_type=<%= @page.class.name %>&flaggable_id=<%= @page.id %>', { asynchronous: true, method: 'get' })
-else {
-  alert('no cookie')
-}
-</script>
+<div id="flag" title="<%= @page.class.name %>_<%= @page.id %>">Login or sign up to flag this page.</div>
 
 <p class="wiki_body">
   <%= wikified_body(auto_link(@page.body)) %>
