@@ -18,9 +18,9 @@
       <td><%=h flag.created_at.to_s :short %></td>
       <td><%=h flag.user.login %> (<%=h flag.user.flags.size %>)</td>
       <td><%= link_to h('%s %i' % [flag.flaggable_type, flag.flaggable_id]), flag.flaggable %></td>
-      <td><%= link_to h(flag.owner.login), flag.owner %></td>
+      <td><%= flag.owner ? (link_to h(flag.owner.login), flag.owner) : "Anonymous" %></td>
       <td><%=h flag.reason %></td>
-      <td><%= link_to "Destroy", flag, :method => :delete %></td>
+      <td><%= link_to "Unflag", flag, :method => :delete %></td>
     </tr>
     <% end %>
   </tbody>
