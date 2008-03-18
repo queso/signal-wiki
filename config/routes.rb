@@ -1,4 +1,6 @@
 ActionController::Routing::Routes.draw do |map|
+  map.resources :flags
+
 
   map.open_id_complete 'session', :controller => "sessions", :action => "create", :requirements => { :method => :get }
   map.resource :session
@@ -13,8 +15,6 @@ ActionController::Routing::Routes.draw do |map|
   
    
   map.wiki_page '/:id', :controller => "pages", :action => "show"
-  map.connect '', :controller => "pages", :action => "show", :id => "home"
-  
-  
+  map.root :controller => "pages", :action => "show", :id => "home"
 
 end

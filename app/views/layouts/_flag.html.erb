@@ -1,0 +1,14 @@
+<% if logged_in? %>
+  <% form_for current_user.flags.build do |form| %>
+    <%= form.hidden_field :flaggable_type, :value => flag.class.name %>
+    <%= form.hidden_field :flaggable_id,   :value => flag.id %>
+    <select name="flag[reason]">
+    <% flag.reasons.each do |reason| -%>
+      <option name="<%=h reason.to_s %>"><%=h reason.to_s %></option>
+    <% end -%>
+    </select>
+    <input type="submit" value="Flag this content" />
+  <% end %>
+<% else %>
+  Login or sign up to flag content as inappropriate
+<% end %>

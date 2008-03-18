@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 12) do
+ActiveRecord::Schema.define(:version => 13) do
 
   create_table "attachments", :force => true do |t|
     t.integer  "size"
@@ -20,6 +20,16 @@ ActiveRecord::Schema.define(:version => 12) do
     t.integer  "parent_id"
     t.string   "thumbnail"
     t.integer  "page_id"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "flags", :force => true do |t|
+    t.integer  "user_id"
+    t.integer  "flaggable_id"
+    t.string   "flaggable_type"
+    t.integer  "flaggable_user_id"
+    t.string   "reason"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
