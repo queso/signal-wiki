@@ -88,6 +88,10 @@ class Page < ActiveRecord::Base
     RAILS_DEFAULT_LOGGER.info "LOCKED #{self.permalink}"
   end
   
+  def locked?
+    locked_at.nil? or locked_at > Time.now
+  end
+  
   def unlock
     self.without_revision do
       self.update_attribute(:locked_at, nil)
