@@ -11,3 +11,10 @@ var LoginForm = {
     $('openid_fields').show();
   }
 }
+
+document.observe("dom:loaded", function(){
+  if (Cookie.get('logged_in')) {
+    $$('logged_in').each(Element.show)
+    $$('logged_out').each(Element.hide)
+  }
+})

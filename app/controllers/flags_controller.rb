@@ -13,7 +13,7 @@ public
   # collection methods
 
   def create
-    flag = current_user.flags.create params[:flag]
+    flag = current_user.flags.create! params[:flag]
     flash[:notice] = if flag.new_record?
       "You already flagged this content!"
     else # success
@@ -37,6 +37,25 @@ public
     end
   end    
    
+  # member methods
+  
+  def new
+    # massive hack to find the flaggable
+    if klass = Flag.flaggable_models.detect { |s| s.name == params[:flaggable_type] }
+      object = klass.find params[:flaggable_id]
+    
+      respond_to do |format|
+        format.html {}
+        format.js { render :partial => "flag.html.erb", :object => object }
+      end
+    else
+      flash[:error] = "Could not find class #{params[:flaggable_type]} in #{ ActiveRecord::Base.send(:subclasses).inspect}"
+      respond_to do |format|
+        format.html { redirect_to '/' }
+        format.js   { render :text => flash[:error] }
+      end
+    end
+  end
    
   def destroy
     Flag.find(params[:id]).destroy

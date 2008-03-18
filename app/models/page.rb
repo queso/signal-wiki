@@ -22,6 +22,8 @@ class Page < ActiveRecord::Base
   acts_as_versioned
   attr_accessor :ip, :agent, :referrer
   acts_as_indexed :fields => [:title, :body, :author]
+
+  can_be_flagged :reasons => [:spam, :outdated, :inaccurate]
   
   before_save :set_permalink
   before_update :set_links
