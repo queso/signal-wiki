@@ -1,0 +1,9 @@
+one:
+  flaggable_type: ReplaceMe # replace with your content model name
+  flaggable_id: 1
+  user_id: 1
+  
+two:
+  flaggable_type: ReplaceMe
+  flaggable_id: 2
+  user_id: 2

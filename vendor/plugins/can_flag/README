@@ -1,0 +1,62 @@
+Can Flag
+=================
+Strongly inspired by acts_as_flaggable.
+Intended to allow your users to flag content as inappropriate, and set up some ways for you 
+to deal with the content.
+
+== Resources
+
+Install
+
+1. Download the tarball from github, or, clone the repository and symlink it into your application.
+   Yes, I'm serious.
+  
+2. $ script/generate can_flag flags
+
+   This will create the following files:
+     app/controllers/flags_controller.rb
+     spec/helpers/flags_controller_spec.rb
+     app/helpers/flags_helper
+     db/migrate/flags_migration.rb
+
+3. Modify any content model with
+  
+   class Article < ActiveRecord::Base
+     can_be_flagged
+   end
+   
+   You can also add a callback
+   
+   class Article
+     can_be_flagged
+     def after_flagged
+       # send an email
+       # delete this post
+       # suspend the owner of the post if the flags.size > 3
+       # suspend the owner of the post if their total flags count > 5
+     end
+   end
+
+4. Modify your user model with
+ 
+   class User < ActiveRecord::Base
+     can_flag     
+   end
+
+5. Usage
+
+   article = Article.find(4)
+   current_user.flags.create :flaggable => article
+
+ 
+
+ * When a flag is added via add_flag, flagged(flag, flag_count) is called
+   on the flaggable model.  This allows the model to perform certain
+   operations if the number of flags reaches a certain point.  For example,
+   you may want to mark a Post as deleted if a Post receives too many "spam"
+   flags
+ 
+ * Each flag reference flaggable object
+ 
+ model = Model.find(1)
+ model.flags.get(0).commtable == model
