@@ -9,7 +9,7 @@
 <% content_for :right do -%>
 <h5>Author: <%= author(@page.user_id) %></h5>
 <ul class="meta_info">
-	<li><%= link_to 'Edit this page', edit_page_path(@page) unless @page.locked? && !current_user.admin? %></li>
+	<li><%= link_to 'Edit this page', edit_page_path(@page) unless @page.locked? && logged_in? && !current_user.admin? %></li>
 	<li><%= link_to((@page.locked? ? "Unlock this page" : "Lock this page"), lock_page_path(@page)) if logged_in? && current_user.admin? %></li>
 	<li><%= link_to "Delete this page and all revisions", page_path(@page), :method => :delete if logged_in? && current_user.admin? && @page.permalink != 'home' %></li>
 	<li><%= link_to('View previous revision', revision_page_url(:id => @page.permalink, :version => (@page.version - 1) )) if (@page.versions.size > 1 && @page.version > 1) %></li>
