@@ -1,9 +1,4 @@
-require 'test/unit'
-require 'rubygems'
-require 'active_support'
-
-RAILS_ROOT = File.dirname(__FILE__)
-require File.dirname(__FILE__) + "/../lib/open_id_authentication"
+require File.dirname(__FILE__) + '/test_helper'
 
 class NormalizeTest < Test::Unit::TestCase
   include OpenIdAuthentication
@@ -20,7 +15,8 @@ class NormalizeTest < Test::Unit::TestCase
     "https://loudthinking.com:443"          => "https://loudthinking.com/",
     "http://loudthinking.com:8080"          => "http://loudthinking.com:8080/",
     "techno-weenie.net"                     => "http://techno-weenie.net/",
-    "http://techno-weenie.net"              => "http://techno-weenie.net/"
+    "http://techno-weenie.net"              => "http://techno-weenie.net/",
+    "http://techno-weenie.net  "            => "http://techno-weenie.net/"
   }
 
   def test_normalizations
@@ -30,6 +26,7 @@ class NormalizeTest < Test::Unit::TestCase
   end
   
   def test_broken_open_id
+    assert_raises(InvalidOpenId) { normalize_url(nil) }
     assert_raises(InvalidOpenId) { normalize_url("=name") }
   end
 end
