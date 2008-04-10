@@ -6,7 +6,7 @@ Enjoy :)
 
 =====  Installation instructions
 
-#FIXME: Add these instructions
+#FIXME: Detail these instructions more
 1. Download app
 2. Copy config/database.yml.example to config/database.yml
 3. Run "rake db:migrate" from the root of the app
