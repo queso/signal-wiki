@@ -2,7 +2,7 @@ class AttachmentsController < ApplicationController
   # GET /attachments
   # GET /attachments.xml
   def index
-    @attachments = Attachment.find_parent(:all)
+    @attachments = Attachment.find(:all)
 
     respond_to do |format|
       format.html # index.html.erb
