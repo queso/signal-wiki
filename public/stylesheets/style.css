@@ -225,3 +225,14 @@ a.attachment_link {
 	text-decoration: none;
 	margin: 0 auto;
 }
+
+del {
+    color: #999;
+    background-color: #ddd;
+}
+
+ins {
+    background-color: #cfc;
+    text-decoration: none;
+    color: #000;
+}

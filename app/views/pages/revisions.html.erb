@@ -1,0 +1,15 @@
+<h2><%= link_to @page.title, wiki_page_url(@page.permalink) %></h2>
+
+<h5>Current Version: <%= @page.version %></h5>
+<ul>
+<% @revisions.each do |rev| %>
+	<li>
+		<%= link_to "#{rev.version}", revision_page_url(@page.permalink,:version =>rev.version) %> 
+			updated <%= time_ago_in_words(rev.updated_at) %> ago 
+			by <%= author(rev.user_id)  %>
+			<% if rev.respond_to?(:previous) && !rev.previous.nil? %>
+			<%= link_to "(Diff)", diff_page_url(@page.permalink, :v1 => rev.version, :v2 => rev.previous) %>
+			<% end %>
+	</li>
+<% end %>
+</ul>

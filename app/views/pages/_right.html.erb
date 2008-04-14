@@ -1,0 +1,24 @@
+<ul class="meta_info">
+	<li><b>Author:</b> <%= author(version.user_id) %></li>
+	<li><b>Version:</b> <%= version.version %></li>
+	<li><%= link_to 'View all revisions', revisions_page_url(:id => page.permalink) %></li>
+	<li><%= link_to 'View previous revision', revision_page_url(:id => page.permalink, :version => version.previous.version) if version.previous %></li>
+	<li><%= link_to 'View next revision', revision_page_url(:id => page.permalink, :version => version.next.version) if version.next %></li>
+	<li><%= link_to((page.locked? ? "Unlock this page" : "Lock this page"), lock_page_path(page)) if logged_in? && current_user.admin? %></li>	
+	<% if page.version == version.version %>
+		<li><%= link_to 'Edit this page', edit_page_path(page) unless page.locked? && logged_in? && !current_user.admin? %></li>		
+		<li><%= link_to "Delete this page and all revisions", page_path(page), :method => :delete if logged_in? && current_user.admin? && page.permalink != 'home' %></li>
+		<li><%= link_to 'Return to home', pages_path unless page.permalink == "home" %></li>
+		<li>Inbound links:
+		  <ul>
+		    <% page.inbound_links.each do |link| -%>
+		    <li><%= link_to link.from_page.title, link.from_page %></li>
+		    <% end %>
+		  </ul>
+	  </li>
+	<% else %>
+		<li><%= link_to "Rollback to this revision", rollback_page_url(:id => page.permalink, :version => (version.version)) unless (page.locked?) %></li>
+		<li><%= link_to 'Return to current revision', wiki_page_url(page.permalink) %></li>		
+	<% end %>
+	<%# FIXME Clean up this revision link logic %>
+</ul>

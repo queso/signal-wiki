@@ -4,7 +4,7 @@ class PagesController < ApplicationController
   before_filter :check_private, :only => [:show, :revision]
   caches_page :show
   cache_sweeper :page_sweeper, :only => [:create, :update]
-  
+  include HTMLDiff
   
   # GET /pages
   # GET /pages.xml
@@ -21,7 +21,7 @@ class PagesController < ApplicationController
   # GET /pages/1.xml
   def show
     @page = site.pages.find_by_permalink(params[:id] || "home")
-    
+    @version = @page.versions.find_by_version(@page.version)
     
     if @page
       respond_to do |format|
@@ -33,13 +33,31 @@ class PagesController < ApplicationController
       redirect_to new_page_url()
     end
   end
+  
+  def diff
+    @page = site.pages.find_by_permalink(params[:id])
+    @v1 = @page.versions.find_by_version(params[:v1])
+    @v2 = @page.versions.find_by_version(params[:v2])
+    @diff = htmldiff(@v2.body,@v1.body)
+    respond_to do |format|
+      format.html
+    end
+  end
+
+  def revisions
+    @page = site.pages.find_by_permalink(params[:id])
+    @revisions = @page.versions
+    respond_to do |format|
+      format.html
+    end
+  end
 
   def revision
     @page = site.pages.find_by_permalink(params[:id])
-    @page = site.pages.find_version(@page.id, params[:version])
+    @version = @page.versions.find_by_version(params[:version])
     
     respond_to do |format|
-      format.html
+      format.html { render :action => "show"}
     end
   end
 

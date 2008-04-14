@@ -1,11 +1,7 @@
-<h2><%= link_to @page.title, wiki_page_url(@page.permalink) %></h2>
-
-
-<p class="wiki_body">
-  <%= wikified_body(@page.body) %>
-</p>
+<%= render :partial => "page", :locals => {:page => @version} %>
 
 <% content_for :right do -%>
+
 <h5>Author: <%= author(@page.user_id) %></h5>
 <ul class="meta_info">
 	<li><%= link_to('View previous revision', revision_page_url(:id => @page.permalink, :version => (@page.previous.version))) if @page.previous %></li>
@@ -14,4 +10,6 @@
 	<%# FIXME Clean up this revision link logic %>
 	<li><%= link_to 'Return to current revision', wiki_page_url(@page.permalink) %></li>
 </ul>
+	<%= render :partial => "right", :locals => {:page => @page, :version => @version} %>
+
 <% end -%>

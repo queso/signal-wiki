@@ -59,6 +59,14 @@ class Page < ActiveRecord::Base
     end
   end
   
+  def next_version
+    self.versions.size > self.version ? self.version + 1 : false
+  end
+  
+  def previous_version
+    self.version > 1 ? self.version - 1 : false
+  end  
+  
   def set_links
     Link.transaction do
       # outbound_links.delete_all
