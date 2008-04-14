@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../active_record_unit'
+require 'active_record_unit'
 
 class RenderPartialWithRecordIdentificationTest < ActiveRecordTestCase
   fixtures :developers, :projects, :developers_projects, :topics, :replies
@@ -34,6 +34,7 @@ class RenderPartialWithRecordIdentificationTest < ActiveRecordTestCase
       render :partial => @developers
     end
   end
+  RenderPartialWithRecordIdentificationController.view_paths = [ File.dirname(__FILE__) + "/../fixtures/" ]
   
   def setup
     @controller = RenderPartialWithRecordIdentificationController.new
@@ -58,8 +59,10 @@ class RenderPartialWithRecordIdentificationTest < ActiveRecordTestCase
   end
   
   def test_rendering_partial_with_belongs_to_association
+    topic = Reply.find(1).topic
     get :render_with_belongs_to_association
     assert_template 'topics/_topic'
+    assert_equal topic.title, @response.body
   end
   
   def test_render_with_record

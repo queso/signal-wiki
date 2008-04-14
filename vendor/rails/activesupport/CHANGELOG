@@ -1,16 +1,196 @@
 *SVN*
 
+* Add config.active_support.escape_html_entities_in_json to allow disabling of html entity escaping.  [rick]
+
+* Improve documentation. [Xavier Noria]
+
+* Modified ActiveSupport::Callbacks::Callback#call to accept multiple arguments.
+
+* Time #yesterday and #tomorrow behave correctly crossing DST boundary. Closes #7399 [sblackstone]
+
+* TimeWithZone: Adding tests for dst and leap day edge cases when advancing time [Geoff Buesing]
+
+* TimeWithZone#method_missing: send to utc to advance with dst correctness, otherwise send to time. Adding tests for time calculations methods [Geoff Buesing]
+
+* Add config.active_support.use_standard_json_time_format setting so that Times and Dates export to ISO 8601 dates.  [rick]
+
+* TZInfo: Removing unneeded TimezoneProxy class [Geoff Buesing]
+
+* TZInfo: Removing unneeded TimezoneIndexDefinition, since we're not including Indexes::Timezones [Geoff Buesing] 
+
+* Removing unnecessary uses_tzinfo helper from tests, given that TZInfo is now bundled [Geoff Buesing]
+
+* Bundling abbreviated version of TZInfo gem 0.3.8: only the classes and zone definitions required to support Rails time zone features are included. If a recent version of the full TZInfo gem is installed, this will take precedence over the bundled version [Geoff Buesing]
+
+* TimeWithZone#marshal_load does zone lookup via Time.get_zone, so that tzinfo/Olson identifiers are handled [Geoff Buesing]
+
+* Time.zone= accepts TZInfo::Timezone instances and Olson identifiers; wraps result in TimeZone instance [Geoff Buesing] 
+
+* TimeWithZone time conversions don't need to be wrapped in TimeOrDateTime, because TZInfo does this internally [Geoff Buesing]
+
+* TimeWithZone#usec returns 0 instead of error when DateTime is wrapped [Geoff Buesing]
+
+* Improve documentation. [Radar, Jan De Poorter, chuyeow, xaviershay, danger, miloops, Xavier Noria,  Sunny Ripert]
+
+* Ensure that TimeWithZone#to_yaml works when passed a YAML::Emitter.  [rick]
+
+* Ensure correct TimeWithZone#to_date [Geoff Buesing]
+
+* Make TimeWithZone work with tzinfo 0.2.x: use TZInfo::Timezone#zone_identifier alias for #abbreviation, silence warnings on tests. Raise LoadError when TZInfo version is < 0.2 by sniffing for TZInfo::TimeOrDateTime constant. Move all tzinfo-dependent TimeZone tests into uses_tzinfo block [Geoff Buesing]
+
+* Time, DateTime and TimeWithZone #in_time_zone defaults to Time.zone. Removing now unneeded #in_current_time_zone [Geoff Buesing]
+
+* TZInfo caches Timezone instances in its own internal hash cache, so TimeZone::MAPPING doesn't need to cache them as well [Geoff Buesing]
+
+* Adding TimeZone#parse [Geoff Buesing]
+
+* Adding TimeZone#at and DateTime#to_f [Geoff Buesing]
+
+* TimeWithZone responds to Ruby 1.9 weekday-named query methods [Geoff Buesing]
+
+* TimeWithZone caches TZInfo::TimezonePeriod used for time conversion so that it can be reused, and enforces DST rules correctly when instance is created from a local time [Geoff Buesing]
+
+* Fixed that BufferedLogger should create its own directory if one doesn't already exist #11285 [lotswholetime]
+
+* Fix Numeric time tests broken by DST change by anchoring them to fixed times instead of Time.now. Anchor TimeZone#now DST test to time specified with Time.at instead of Time.local to work around platform differences with Time.local and DST representation [Geoff Buesing]
+
+* Removing unneeded #change_time_zone method from Time, DateTime and TimeWithZone [Geoff Buesing]
+
+* TimeZone #local and #now correctly enforce DST rules [Geoff Buesing]
+
+* TimeWithZone instances correctly enforce DST rules. Adding TimeZone#period_for_utc [Geoff Buesing]
+
+* test_time_with_datetime_fallback expects DateTime.local_offset instead of DateTime.now.offset [Geoff Buesing]
+
+* Adding TimeWithZone #marshal_dump and #marshal_load [Geoff Buesing]
+
+* Add OrderedHash#to_hash [josh]
+
+* Adding Time#end_of_day, _quarter, _week, and _year.  #9312 [Juanjo Bazan, Tarmo Tänav, BigTitus]
+
+* Adding TimeWithZone#between? [Geoff Buesing]
+
+* Time.=== returns true for TimeWithZone instances [Geoff Buesing]
+
+* TimeWithZone #+ and #- behave consistently with numeric arguments regardless of whether wrapped time is a Time or DateTime; consistenty answers false to #acts_like?(:date) [Geoff Buesing]
+
+* Add String#squish and String#squish! to remove consecutive chunks of whitespace.  #11123 [jordi, Henrik N]
+
+* Serialize BigDecimals as Floats when using to_yaml. #8746 [ernesto.jimenez]
+
+* Adding TimeWithZone #to_yaml, #to_datetime, #eql? and method aliases for duck-typing compatibility with Time [Geoff Buesing]
+
+* TimeWithZone #in_time_zone returns +self+ if zone argument is the same as #time_zone [Geoff Buesing]
+
+* Adding TimeWithZone #to_a, #to_f, #to_i, #httpdate, #rfc2822 [Geoff Buesing]
+
+* Pruning unneeded TimeWithZone#change_time_zone_to_current [Geoff Buesing]
+
+* Time#zone=, #in_time_zone and #change_time_zone accept a Duration [Geoff Buesing]
+
+* Time#in_time_zone handles Time.local instances correctly [Geoff Buesing]
+
+* Pruning unneeded Time#change_time_zone_to_current. Enhanced docs to #change_time_zone to explain the difference between this method and #in_time_zone [Geoff Buesing]
+
+* TimeZone#new method renamed #local; when used with Time.zone, constructor now reads: Time.zone.local() [Geoff Buesing]
+
+* Added Base64.encode64s to encode values in base64 without the newlines. This makes the values immediately usable as URL parameters or memcache keys without further processing [DHH]
+
+* Remove :nodoc: entries around the ActiveSupport test/unit assertions.  #10946 [dancroak, jamesh]
+
+* Add Time.zone_default accessor for setting the default time zone.  Rails::Configuration.time_zone sets this.  #10982 [Geoff Buesing]
+
+* cache.fetch(key, :force => true) to force a cache miss.  [Jeremy Kemper]
+
+* Support retrieving TimeZones with a Duration.  TimeZone[-28800] == TimeZone[-480.minutes].  [rick]
+
+* TimeWithZone#- added, so that #- can handle a Time or TimeWithZone argument correctly [Geoff Buesing]
+
+* with_timezone test helper renamed with_env_tz, to distinguish between setting ENV['TZ'] and setting Time.zone in tests [Geoff Buesing]
+
+* Time#- coerces TimeWithZone argument to a Time instance so that difference in seconds can be calculated. Closes #10914 [Geoff Buesing, yyyc514]
+
+* Adding UTC zone to TimeZone; TimeWithZone no longer has to fake UTC zone with nil [Geoff Buesing]
+
+* Time.get_zone refactored to private method, given that the encapsulated logic is only useful internally [Geoff Buesing]
+
+* Time.zone uses thread-local variable for thread safety. Adding Time.use_zone, for overriding Time.zone locally inside a block. Removing unneeded Time.zone_reset! [Geoff Buesing]
+
+* TimeZone#to_s uses UTC rather than GMT; reapplying change that was undone in [8679]. #1689 [Cheah Chu Yeow]
+
+* Time.days_in_month defaults to current year if no year is supplied as argument #10799 [Radar], uses Date.gregorian_leap? to determine leap year, and uses constant lookup to determine days in month [Geoff Buesing]  
+
+* Adding Time and DateTime #compare_with_coercion, which layers behavior on #<=> so that any combination of Time, DateTime and ActiveSupport::TimeWithZone instances can be chronologically compared [Geoff Buesing]
+
+* TimeZone#now returns an ActiveSupport::TimeWithZone [Geoff Buesing]
+
+* Time #in_current_time_zone and #change_time_zone_to_current return self when Time.zone is nil [Geoff Buesing]
+
+* Remove unneeded #to_datetime_default_s alias for DateTime#to_s, given that we inherit a #to_default_s from Date that does exactly the same thing [Geoff Buesing]
+
+* Refactor Time and DateTime #to_formatted_s: use ternary instead of nested if/else [Geoff Buesing]
+
+* Adding Time and DateTime #formatted_offset, for outputting +HH:MM utc offset strings with cross-platform consistency [Geoff Buesing]
+
+* Adding alternate_utc_string option to TimeZone#formatted_offset. Removing unneeded TimeZone#offset. [Geoff Buesing]
+
+* Introduce ActiveSupport::TimeWithZone, for wrapping Time instances with a TimeZone. Introduce instance methods to Time for creating TimeWithZone instances, and class methods for managing a global time zone. [Geoff Buesing]
+
+>>>>>>> .r8815
+* Replace non-dst-aware TimeZone class with dst-aware class from tzinfo_timezone plugin. TimeZone#adjust and #unadjust are no longer available; tzinfo gem must now be present in order to perform time zone calculations, via #local_to_utc and #utc_to_local methods. [Geoff Buesing]
+
+* Extract ActiveSupport::Callbacks from Active Record, test case setup and teardown, and ActionController::Dispatcher.  #10727 [Josh Peek]
+
+* Introducing DateTime #utc, #utc? and #utc_offset, for duck-typing compatibility with Time. Closes #10002 [Geoff Buesing]
+
+* Time#to_json uses Numeric#to_utc_offset_s to output a cross-platform-consistent representation without having to convert to DateTime. References #9750 [Geoff Buesing]
+
+* Refactor number-to-HH:MM-string conversion logic from TimeZone#formatted_offset to a reusable Numeric#to_utc_offset_s method. [Geoff Buesing]
+
+* Continue evolution toward ActiveSupport::TestCase.  #10679 [Josh Peek]
+
+* TestCase: introduce declared setup and teardown callbacks. Pass a list of methods and an optional block to call before setup or after teardown. Setup callbacks are run in the order declared; teardown callbacks are run in reverse.  [Jeremy Kemper]
+
+* Added ActiveSupport::Gzip.decompress/compress(source) as an easy wrapper for Zlib [Tobias Luetke]
+
+* Included MemCache-Client to make the improved ActiveSupport::Cache::MemCacheStore work out of the box [Bob Cottrell, Eric Hodel]
+
+* Added ActiveSupport::Cache::* framework as an extraction from ActionController::Caching::Fragments::* [DHH]
+
+* Fixed String#titleize to work for strings with 's too #10571 [trek]
+
+* Changed the implementation of Enumerable#group_by to use a double array approach instead of a hash such that the insert order is honored [DHH/Marcel]
+
+* remove multiple enumerations from ActiveSupport::JSON#convert_json_to_yaml when dealing with date/time values.  [rick]
+
+* Hash#symbolize_keys skips keys that can't be symbolized.  #10500 [Brad Greenlee]
+
+* Ruby 1.9 compatibility.  #1689, #10466, #10468, #10554, #10594, #10632 [Cheah Chu Yeow, Pratik Naik, Jeremy Kemper, Dirkjan Bussink, fxn]
+
+* TimeZone#to_s uses UTC rather than GMT.  #1689 [Cheah Chu Yeow]
+
+* Refactor of Hash#symbolize_keys! to use Hash#replace.  Closes #10420 [ReinH]
+
+* Fix HashWithIndifferentAccess#to_options! so it doesn't clear the options hash.  Closes #10419 [ReinH]
+
+
+*2.0.1* (December 7th, 2007)
+
+* Added Array#from and Array#to that behaves just from String#from and String#to [DHH]
+
+* Fix that empty collections should be treated as empty arrays regardless of whitespace for Hash#from_xml #10255 [adamj]
+
 * Time#time_with_datetime_fallback, Time#to_datetime, Date#to_datetime and String#to_datetime honor Ruby's default calendar reform setting. #10201 [Geoff Buesing]
 
 * Change Time and DateTime #end_of_month to return last second of month instead of beginning of last day of month. Closes #10200 [Geoff Buesing]
 
 * Speedup String#blank?  [Jeremy Kemper, Koz]
 
-* Add documentation for Hash#diff. Closes #9306 [tarmo]
+* Add documentation for Hash#diff. Closes #9306 [Tarmo Tänav]
 
-* Add new superclass_delegating_accessors.  Similar to class inheritable attributes but with subtly different semantics. [Koz, tarmo]
+* Add new superclass_delegating_accessors.  Similar to class inheritable attributes but with subtly different semantics. [Koz, Tarmo Tänav]
 
-* Change JSON to encode %w(< > &) as 4 digit hex codes to be in compliance with the JSON spec.  Closes #9975 [josh, chuyeow, tpope]
+* Change JSON to encode %w(< > &) as 4 digit hex codes to be in compliance with the JSON spec.  Closes #9975 [Josh Peek, Cheah Chu Yeow, Tim Pope]
 
 * Fix JSON encoding/decoding bugs dealing with /'s.  Closes #9990 [Rick, theamazingrando]
 
@@ -19,7 +199,7 @@
   The intention is to use this to reduce the amount of monkeypatching / overriding that 
   is done to test/unit's classes.
 
-* Document Enumerable and Hash #to_json.  #9970 [Chu Yeow]
+* Document Enumerable and Hash #to_json.  #9970 [Cheah Chu Yeow]
 
 * Hash#to_xml handles symbol values.  #9954 [Assaf]
 
@@ -51,20 +231,17 @@
 
 * Unbundle Builder in favor of a gem dependency.  [Jeremy Kemper]
 
-* Disambiguate Time, Date, and DateTime#to_json formatting.  #9750 [Geoff Buesing, Chu Yeow]
+* Disambiguate Time, Date, and DateTime#to_json formatting.  #9750 [Geoff Buesing, Cheah Chu Yeow]
 
-* Hash#to_json takes :only or :except options to specific or omit certain hash keys. Enumerable#to_json passes through its options to each element.  #9751 [Chu Yeow]
+* Hash#to_json takes :only or :except options to specific or omit certain hash keys. Enumerable#to_json passes through its options to each element.  #9751 [Cheah Chu Yeow]
 
 * BufferedLogger#auto_flushing = N flushes the log every N messages. Buffers with an array instead of string. Disabling auto_flushing still flushes when the buffer hits a maximum size, as a failsafe against memory-gobbling.  [Jeremy Kemper]
 
 * Fixed Date#xmlschema for dates outside the range of what can be created with Time #9744 [Geoff Buesing]
 
-
-*2.0.0 [Preview Release]* (September 29th, 2007)
-
 * Fixed that La Paz was included in -25200 and -14400 offsets when it should only be in -14400 #9735 [bermi]
 
-* Fixed JSON encoding to use quoted keys according to the JSON standard #8762 [choonkat/chuyeow]
+* Fixed JSON encoding to use quoted keys according to the JSON standard.  #8762 [choonkat, Cheah Chu Yeow]
 
 * Alias Object#send to send! for Ruby 1.9 forward compatibility.  [Jeremy Kemper]
 
@@ -78,11 +255,11 @@
 
 * Decode json strings as Dates/Times if they're using a YAML-compatible format.  Closes #9614 [Rick]
 
-* Fixed cache_page to use the request url instead of the routing options when picking a save path #8614 [josh]
+* Fixed cache_page to use the request url instead of the routing options when picking a save path.  #8614 [Josh Peek]
 
 * Object.subclasses_of includes anonymous subclasses.  [Jeremy Kemper]
 
-* Fixed that pluralizing an empty string should return the same empty string, not "s" #7720 [josh]
+* Fixed that pluralizing an empty string should return the same empty string, not "s".  #7720 [Josh Peek]
 
 * Added call to inspect on non-string classes for the logger #8533 [codahale]
 
@@ -92,7 +269,7 @@
 
 * Hash#to_xml doesn't double-unescape.  #8806 [Ezran]
 
-* Added Array#rand #9170 [norbert]. Examples:
+* Added Array#rand #9170 [Norbert Crombach]. Examples:
 
     [].rand       # => nil
     ['a'].rand    # => 'a'
@@ -108,7 +285,7 @@
 
 * Add support for []= on ActiveSupport::Multibyte::Chars. Closes #9142. [ewan, manfred]
 
-* Added Array#extract_options! to encapsulate the pattern of getting an options hash out of a variable number of parameters #8759 [norbert].
+* Added Array#extract_options! to encapsulate the pattern of getting an options hash out of a variable number of parameters.  #8759 [Norbert Crombach]
 
 * Let alias_attribute work with attributes with initial capital letters (legacy columns etc).  Closes #8596 [mpalmer]
 

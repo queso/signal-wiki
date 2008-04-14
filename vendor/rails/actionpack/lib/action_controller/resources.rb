@@ -44,13 +44,14 @@ module ActionController
   module Resources
     class Resource #:nodoc:
       attr_reader :collection_methods, :member_methods, :new_methods
-      attr_reader :path_prefix, :name_prefix
+      attr_reader :path_prefix, :name_prefix, :path_segment
       attr_reader :plural, :singular
       attr_reader :options
 
       def initialize(entities, options)
         @plural   ||= entities
         @singular ||= options[:singular] || plural.to_s.singularize
+        @path_segment = options.delete(:as) || @plural
 
         @options = options
 
@@ -75,7 +76,7 @@ module ActionController
       end
 
       def path
-        @path ||= "#{path_prefix}/#{plural}"
+        @path ||= "#{path_prefix}/#{path_segment}"
       end
 
       def new_path
@@ -226,6 +227,13 @@ module ActionController
     #
     #   <% form_for :message, @message, :url => message_path(@message), :html => {:method => :put} do |f| %>
     #
+    # or
+    #
+    #   <% form_for @message do |f| %>
+    #
+    # which takes into account whether <tt>@message</tt> is a new record or not and generates the
+    # path and method accordingly.
+    #
     # The #resources method accepts the following options to customize the resulting routes:
     # * <tt>:collection</tt> - add named routes for other actions that operate on the collection.
     #   Takes a hash of <tt>#{action} => #{method}</tt>, where method is <tt>:get</tt>/<tt>:post</tt>/<tt>:put</tt>/<tt>:delete</tt>
@@ -236,6 +244,28 @@ module ActionController
     # * <tt>:singular</tt> - specify the singular name used in the member routes.
     # * <tt>:requirements</tt> - set custom routing parameter requirements.
     # * <tt>:conditions</tt> - specify custom routing recognition conditions.  Resources sets the :method value for the method-specific routes.
+    # * <tt>:as</tt> - specify a different resource name to use in the URL path. For example:
+    #     # products_path == '/productos'
+    #     map.resources :products, :as => 'productos' do |product|
+    #       # product_reviews_path(product) == '/productos/1234/comentarios'
+    #       product.resources :product_reviews, :as => 'comentarios'
+    #     end
+    #
+    # * <tt>:has_one</tt> - specify nested resources, this is a shorthand for mapping singleton resources beneath the current.
+    # * <tt>:has_many</tt> -  same has :has_one, but for plural resources.
+    #
+    #   You may directly specify the routing association with has_one and has_many like:
+    #
+    #     map.resources :notes, :has_one => :author, :has_many => [:comments, :attachments]
+    #
+    #   This is the same as:
+    #
+    #     map.resources :notes do |notes|
+    #       notes.resource  :author
+    #       notes.resources :comments
+    #       notes.resources :attachments
+    #     end
+    #
     # * <tt>:path_prefix</tt> - set a prefix to the routes with required route variables.
     #
     #   Weblog comments usually belong to a post, so you might use resources like:

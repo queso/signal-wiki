@@ -1,27 +1,23 @@
-require File.dirname(__FILE__) + '/../abstract_unit'
-
-$:.unshift File.dirname(__FILE__) + '/../../../railties/lib'
+require 'abstract_unit'
 require 'action_controller/integration'
 
 uses_mocha 'integration' do
 
-# Stub process for testing.
-module ActionController
-  module Integration
-    class Session
-      def process(*args)
-      end
-
-      def generic_url_rewriter
-      end
-    end
+module IntegrationSessionStubbing
+  def stub_integration_session(session)
+    session.stubs(:process)
+    session.stubs(:generic_url_rewriter)
   end
 end
 
 class SessionTest < Test::Unit::TestCase
+  include IntegrationSessionStubbing
+  
   def setup
     @session = ActionController::Integration::Session.new
+    stub_integration_session(@session)
   end
+  
   def test_https_bang_works_and_sets_truth_by_default
     assert !@session.https?
     @session.https!
@@ -49,28 +45,49 @@ class SessionTest < Test::Unit::TestCase
     assert_equal 200, @session.follow_redirect!
   end
 
-  def test_get_via_redirect
-    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue" }
+  def test_request_via_redirect_uses_given_method
+    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue"}
+    @session.expects(:put).with(path, args, headers)
+    @session.stubs(:redirect?).returns(false)
+    @session.request_via_redirect(:put, path, args, headers)
+  end
 
-    @session.expects(:get).with(path,args,headers)
-
+  def test_request_via_redirect_follows_redirects
+    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue"}
     @session.stubs(:redirect?).returns(true, true, false)
     @session.expects(:follow_redirect!).times(2)
+    @session.request_via_redirect(:get, path, args, headers)
+  end
 
+  def test_request_via_redirect_returns_status
+    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue"}
+    @session.stubs(:redirect?).returns(false)
     @session.stubs(:status).returns(200)
-    assert_equal 200, @session.get_via_redirect(path, args, headers)
+    assert_equal 200, @session.request_via_redirect(:get, path, args, headers)
+  end
+
+  def test_get_via_redirect
+    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue" }
+    @session.expects(:request_via_redirect).with(:get, path, args, headers)
+    @session.get_via_redirect(path, args, headers)
   end
 
   def test_post_via_redirect
     path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue" }
+    @session.expects(:request_via_redirect).with(:post, path, args, headers)
+    @session.post_via_redirect(path, args, headers)
+  end
 
-    @session.expects(:post).with(path,args,headers)
+  def test_put_via_redirect
+    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue" }
+    @session.expects(:request_via_redirect).with(:put, path, args, headers)
+    @session.put_via_redirect(path, args, headers)
+  end
 
-    @session.stubs(:redirect?).returns(true, true, false)
-    @session.expects(:follow_redirect!).times(2)
-
-    @session.stubs(:status).returns(200)
-    assert_equal 200, @session.post_via_redirect(path, args, headers)
+  def test_delete_via_redirect
+    path = "/somepath"; args = {:id => '1'}; headers = {"X-Test-Header" => "testvalue" }
+    @session.expects(:request_via_redirect).with(:delete, path, args, headers)
+    @session.delete_via_redirect(path, args, headers)
   end
 
   def test_url_for_with_controller
@@ -179,14 +196,25 @@ class SessionTest < Test::Unit::TestCase
     @session.expects(:process).with(:head,path,params,headers_after_xhr)
     @session.xml_http_request(:head,path,params,headers)
   end
+  
+  def test_xml_http_request_override_accept
+    path = "/index"; params = "blah"; headers = {:location => 'blah', "Accept" => "application/xml"}
+    headers_after_xhr = headers.merge(
+      "X-Requested-With" => "XMLHttpRequest"
+    )
+    @session.expects(:process).with(:post,path,params,headers_after_xhr)
+    @session.xml_http_request(:post,path,params,headers)
+  end
 end
 
 class IntegrationTestTest < Test::Unit::TestCase
+  include IntegrationSessionStubbing
 
   def setup
     @test = ::ActionController::IntegrationTest.new(:default_test)
     @test.class.stubs(:fixture_table_names).returns([])
     @session = @test.open_session
+    stub_integration_session(@session)
   end
 
   def test_opens_new_session
@@ -205,21 +233,20 @@ end
 # Tests that integration tests don't call Controller test methods for processing.
 # Integration tests have their own setup and teardown.
 class IntegrationTestUsesCorrectClass < ActionController::IntegrationTest
+  include IntegrationSessionStubbing
 
   def self.fixture_table_names
     []
   end
 
   def test_integration_methods_called
+    reset!
+    stub_integration_session(@integration_session)
     %w( get post head put delete ).each do |verb|
       assert_nothing_raised("'#{verb}' should use integration test methods") { send!(verb, '/') }
     end
   end
 
 end
-
-# TODO
-# class MockCGITest < Test::Unit::TestCase
-# end
 
 end # uses_mocha

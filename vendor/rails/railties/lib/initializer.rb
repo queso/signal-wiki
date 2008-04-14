@@ -7,11 +7,39 @@ require 'railties_path'
 require 'rails/version'
 require 'rails/plugin/locator'
 require 'rails/plugin/loader'
+require 'rails/gem_dependency'
 
 
 RAILS_ENV = (ENV['RAILS_ENV'] || 'development').dup unless defined?(RAILS_ENV)
 
 module Rails
+  class << self
+    # The Configuration instance used to configure the Rails environment
+    def configuration
+      @@configuration
+    end
+  
+    def configuration=(configuration)
+      @@configuration = configuration
+    end
+  
+    def logger
+      RAILS_DEFAULT_LOGGER
+    end
+  
+    def root
+      RAILS_ROOT
+    end
+  
+    def env
+      RAILS_ENV
+    end
+  
+    def cache
+      RAILS_CACHE
+    end
+  end
+  
   # The Initializer is responsible for processing the Rails configuration, such
   # as setting the $LOAD_PATH, requiring the right frameworks, initializing
   # logging, and more. It can be run either as a single command that'll just
@@ -58,62 +86,55 @@ module Rails
     end
 
     # Sequentially step through all of the available initialization routines,
-    # in order:
-    #
-    # * #check_ruby_version
-    # * #set_load_path
-    # * #require_frameworks
-    # * #set_autoload_paths
-    # * add_plugin_load_paths
-    # * #load_environment
-    # * #initialize_encoding
-    # * #initialize_database
-    # * #initialize_logger
-    # * #initialize_framework_logging
-    # * #initialize_framework_views
-    # * #initialize_dependency_mechanism
-    # * #initialize_whiny_nils
-    # * #initialize_temporary_directories
-    # * #initialize_framework_settings
-    # * #add_support_load_paths
-    # * #load_plugins
-    # * #load_observers
-    # * #initialize_routing
-    # * #after_initialize
-    # * #load_application_initializers
+    # in order (view execution order in source).
     def process
+      Rails.configuration = configuration
+
       check_ruby_version
+      install_gem_spec_stubs
       set_load_path
       
       require_frameworks
       set_autoload_paths
+      add_gem_load_paths
       add_plugin_load_paths
       load_environment
 
       initialize_encoding
       initialize_database
+
+      initialize_cache
+      initialize_framework_caches
+
       initialize_logger
       initialize_framework_logging
+
       initialize_framework_views
       initialize_dependency_mechanism
       initialize_whiny_nils
-      initialize_temporary_directories
+      initialize_temporary_session_directory
+      initialize_time_zone
       initialize_framework_settings
 
       add_support_load_paths
 
+      load_gems
       load_plugins
 
-      # Observers are loaded after plugins in case Observers or observed models are modified by plugins.
-      load_observers
+      # pick up any gems that plugins depend on
+      add_gem_load_paths
+      load_gems
 
-      # Routing must be initialized after plugins to allow the former to extend the routes
-      initialize_routing
+      load_application_initializers
 
       # the framework is now fully initialized
       after_initialize
 
-      load_application_initializers
+      # Routing must be initialized after plugins to allow the former to extend the routes
+      initialize_routing
+
+      # Observers are loaded after plugins in case Observers or observed models are modified by plugins.
+      load_observers
     end
 
     # Check for valid Ruby version
@@ -121,6 +142,26 @@ module Rails
     # from the `rails` program as well without duplication.
     def check_ruby_version
       require 'ruby_version_check'
+    end
+
+    # If Rails is vendored and RubyGems is available, install stub GemSpecs
+    # for Rails, ActiveSupport, ActiveRecord, ActionPack, ActionMailer, and
+    # ActiveResource. This allows Gem plugins to depend on Rails even when
+    # the Gem version of Rails shouldn't be loaded.
+    def install_gem_spec_stubs
+      if Rails.vendor_rails?
+        begin; require "rubygems"; rescue LoadError; return; end
+
+        stubs = %w(rails activesupport activerecord actionpack actionmailer activeresource)
+        stubs.reject! { |s| Gem.loaded_specs.key?(s) }
+
+        stubs.each do |stub|
+          Gem.loaded_specs[stub] = Gem::Specification.new do |s|
+            s.name = stub
+            s.version = Rails::VERSION::STRING
+          end
+        end
+      end
     end
 
     # Set the <tt>$LOAD_PATH</tt> based on the value of
@@ -169,6 +210,17 @@ module Rails
       plugin_loader.add_plugin_load_paths
     end
 
+    def add_gem_load_paths
+      unless @configuration.gems.empty?
+        require "rubygems"
+        @configuration.gems.each &:add_load_paths
+      end
+    end
+
+    def load_gems
+      @configuration.gems.each &:load
+    end
+
     # Loads all plugins in <tt>config.plugin_paths</tt>.  <tt>plugin_paths</tt>
     # defaults to <tt>vendor/plugins</tt> but may also be set to a list of
     # paths, such as
@@ -176,7 +228,7 @@ module Rails
     #
     # In the default implementation, as each plugin discovered in <tt>plugin_paths</tt> is initialized:
     # * its +lib+ directory, if present, is added to the load path (immediately after the applications lib directory)
-    # * <tt>init.rb</tt> is evalutated, if present
+    # * <tt>init.rb</tt> is evaluated, if present
     #
     # After all plugins are loaded, duplicates are removed from the load path.
     # If an array of plugin names is specified in config.plugins, only those plugins will be loaded
@@ -213,15 +265,23 @@ module Rails
 
     def load_observers
       if configuration.frameworks.include?(:active_record)
-        ActiveRecord::Base.instantiate_observers
+        if @configuration.gems.any? { |g| !g.loaded? }
+          puts "Unable to instantiate observers, some gems that this application depends on are missing.  Run 'rake gems:install'"
+        else
+          ActiveRecord::Base.instantiate_observers
+        end
       end
     end
 
-    # This initialzation sets $KCODE to 'u' to enable the multibyte safe operations.
-    # Plugin authors supporting other encodings should override this behaviour and
-    # set the relevant +default_charset+ on ActionController::Base
+    # For Ruby 1.8, this initialization sets $KCODE to 'u' to enable the
+    # multibyte safe operations. Plugin authors supporting other encodings
+    # should override this behaviour and set the relevant +default_charset+
+    # on ActionController::Base.
+    #
+    # For Ruby 1.9, this does nothing. Specify the default encoding in the Ruby
+    # shebang line if you don't want UTF-8.
     def initialize_encoding
-      $KCODE='u'
+      $KCODE='u' if RUBY_VERSION < '1.9'
     end
 
     # This initialization routine does nothing unless <tt>:active_record</tt>
@@ -232,6 +292,18 @@ module Rails
       if configuration.frameworks.include?(:active_record)
         ActiveRecord::Base.configurations = configuration.database_configuration
         ActiveRecord::Base.establish_connection
+      end
+    end
+
+    def initialize_cache
+      unless defined?(RAILS_CACHE)
+        silence_warnings { Object.const_set "RAILS_CACHE", ActiveSupport::Cache.lookup_store(configuration.cache_store) }
+      end
+    end
+
+    def initialize_framework_caches
+      if configuration.frameworks.include?(:action_controller)
+        ActionController::Base.cache_store ||= RAILS_CACHE
       end
     end
 
@@ -251,8 +323,11 @@ module Rails
         begin
           logger = ActiveSupport::BufferedLogger.new(configuration.log_path)
           logger.level = ActiveSupport::BufferedLogger.const_get(configuration.log_level.to_s.upcase)
-          logger.auto_flushing = false if configuration.environment == "production"
-        rescue StandardError =>e
+          if configuration.environment == "production"
+            logger.auto_flushing = false
+            logger.set_non_blocking_io
+          end
+        rescue StandardError => e
           logger = ActiveSupport::BufferedLogger.new(STDERR)
           logger.level = ActiveSupport::BufferedLogger::WARN
           logger.warn(
@@ -273,6 +348,8 @@ module Rails
       for framework in ([ :active_record, :action_controller, :action_mailer ] & configuration.frameworks)
         framework.to_s.camelize.constantize.const_get("Base").logger ||= RAILS_DEFAULT_LOGGER
       end
+      
+      RAILS_CACHE.logger ||= RAILS_DEFAULT_LOGGER
     end
 
     # Sets +ActionController::Base#view_paths+ and +ActionMailer::Base#template_root+
@@ -305,14 +382,25 @@ module Rails
       require('active_support/whiny_nil') if configuration.whiny_nils
     end
 
-    def initialize_temporary_directories
+    def initialize_temporary_session_directory
       if configuration.frameworks.include?(:action_controller)
         session_path = "#{configuration.root_path}/tmp/sessions/"
         ActionController::Base.session_options[:tmpdir] = File.exist?(session_path) ? session_path : Dir::tmpdir
+      end
+    end
 
-        cache_path = "#{configuration.root_path}/tmp/cache/"
-        if File.exist?(cache_path)
-          ActionController::Base.fragment_cache_store = :file_store, cache_path
+    # Sets the default value for Time.zone, and turns on ActiveRecord time_zone_aware_attributes.
+    # If assigned value cannot be matched to a TimeZone, an exception will be raised.
+    def initialize_time_zone
+      if configuration.time_zone
+        zone_default = Time.send!(:get_zone, configuration.time_zone)
+        unless zone_default
+          raise "Value assigned to config.time_zone not recognized. Run `rake -D time` for a list of tasks for finding appropriate time zone names."
+        end
+        Time.zone_default = zone_default
+        if configuration.frameworks.include?(:active_record)
+          ActiveRecord::Base.time_zone_aware_attributes = true
+          ActiveRecord::Base.default_timezone = :utc
         end
       end
     end
@@ -327,6 +415,9 @@ module Rails
         configuration.send(framework).each do |setting, value|
           base_class.send("#{setting}=", value)
         end
+      end
+      configuration.active_support.each do |setting, value|
+        ActiveSupport.send("#{setting}=", value)
       end
     end
 
@@ -373,6 +464,9 @@ module Rails
     # A stub for setting options on ActiveRecord::Base
     attr_accessor :active_resource
 
+    # A stub for setting options on ActiveSupport
+    attr_accessor :active_support
+
     # Whether or not classes should be cached (set to false if you want
     # application classes to be reloaded on each request)
     attr_accessor :cache_classes
@@ -414,6 +508,9 @@ module Rails
     # used directly.
     attr_accessor :logger
 
+    # The specific cache store to use. By default, the ActiveSupport::Cache::Store will be used.
+    attr_accessor :cache_store
+
     # The root of the application's views. (Defaults to <tt>app/views</tt>.)
     attr_accessor :view_path
 
@@ -444,6 +541,41 @@ module Rails
     # the implementation of Rails::Plugin::Loader for more details.
     attr_accessor :plugin_loader
     
+    # Enables or disables plugin reloading.  You can get around this setting per plugin.
+    # If #reload_plugins? == false, add this to your plugin's init.rb to make it reloadable:
+    #
+    #   Dependencies.load_once_paths.delete lib_path
+    #
+    # If #reload_plugins? == true, add this to your plugin's init.rb to only load it once:
+    #
+    #   Dependencies.load_once_paths << lib_path
+    #
+    attr_accessor :reload_plugins
+
+    # Returns true if plugin reloading is enabled.
+    def reload_plugins?
+      !!@reload_plugins
+    end
+
+    # An array of gems that this rails application depends on.  Rails will automatically load
+    # these gems during installation, and allow you to install any missing gems with:
+    #
+    #   rake gems:install
+    #
+    # You can add gems with the #gem method.
+    attr_accessor :gems
+
+    # Adds a single Gem dependency to the rails application.
+    #
+    #   # gem 'aws-s3', '>= 0.4.0'
+    #   # require 'aws/s3'
+    #   config.gem 'aws-s3', :lib => 'aws/s3', :version => '>= 0.4.0', \
+    #     :source => "http://code.whytheluckystiff.net"
+    #
+    def gem(name, options = {})
+      @gems << Rails::GemDependency.new(name, options)
+    end
+    
     # Deprecated options:
     def breakpoint_server(_ = nil)
       $stderr.puts %(
@@ -453,6 +585,11 @@ module Rails
       )
     end
     alias_method :breakpoint_server=, :breakpoint_server
+
+    # Sets the default time_zone.  Setting this will enable time_zone
+    # awareness for ActiveRecord models and set the ActiveRecord default
+    # timezone to :utc.
+    attr_accessor :time_zone
 
     # Create a new Configuration instance, initialized with the default
     # values.
@@ -473,10 +610,12 @@ module Rails
       self.plugin_locators              = default_plugin_locators
       self.plugin_loader                = default_plugin_loader
       self.database_configuration_file  = default_database_configuration_file
+      self.gems                         = default_gems
 
       for framework in default_frameworks
         self.send("#{framework}=", Rails::OrderedOptions.new)
       end
+      self.active_support = Rails::OrderedOptions.new
     end
 
     # Set the root_path to RAILS_ROOT and canonicalize it.
@@ -535,8 +674,10 @@ module Rails
     #
     # See Dispatcher#to_prepare.
     def to_prepare(&callback)
-      require 'dispatcher' unless defined?(::Dispatcher)
-      Dispatcher.to_prepare(&callback)
+      after_initialize do 
+        require 'dispatcher' unless defined?(::Dispatcher)
+        Dispatcher.to_prepare(&callback)
+      end
     end
 
     def builtin_directories
@@ -565,7 +706,10 @@ module Rails
       end
 
       def default_load_paths
-        paths = ["#{root_path}/test/mocks/#{environment}"]
+        paths = []
+        
+        # Add the old mock paths only if the directories exists
+        paths.concat(Dir["#{root_path}/test/mocks/#{environment}"]) if File.exists?("#{root_path}/test/mocks/#{environment}")
 
         # Add the app's controller directory
         paths.concat(Dir["#{root_path}/app/controllers/"])
@@ -637,11 +781,25 @@ module Rails
       end
 
       def default_plugin_locators
-        [Plugin::FileSystemLocator]
+        locators = []
+        locators << Plugin::GemLocator if defined? Gem
+        locators << Plugin::FileSystemLocator
       end
 
       def default_plugin_loader
         Plugin::Loader
+      end
+      
+      def default_cache_store
+        if File.exist?("#{root_path}/tmp/cache/")
+          [ :file_store, "#{root_path}/tmp/cache/" ]
+        else
+          :memory_store
+        end
+      end
+      
+      def default_gems
+        []
       end
   end
 end

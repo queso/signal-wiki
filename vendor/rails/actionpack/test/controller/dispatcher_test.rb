@@ -1,4 +1,4 @@
-require "#{File.dirname(__FILE__)}/../abstract_unit"
+require 'abstract_unit'
 
 uses_mocha 'dispatcher tests' do
 
@@ -11,12 +11,12 @@ class DispatcherTest < Test::Unit::TestCase
     @output = StringIO.new
     ENV['REQUEST_METHOD'] = 'GET'
 
-    Dispatcher.callbacks[:prepare].clear
+    Dispatcher.instance_variable_set("@prepare_dispatch_callbacks", ActiveSupport::Callbacks::CallbackChain.new)
     @dispatcher = Dispatcher.new(@output)
   end
 
   def teardown
-    ENV['REQUEST_METHOD'] = nil
+    ENV.delete 'REQUEST_METHOD'
   end
 
   def test_clears_dependencies_after_dispatch_if_in_loading_mode
@@ -63,9 +63,9 @@ class DispatcherTest < Test::Unit::TestCase
 
   def test_prepare_application_runs_callbacks_if_unprepared
     a = b = c = nil
-    Dispatcher.to_prepare { a = b = c = 1 }
-    Dispatcher.to_prepare { b = c = 2 }
-    Dispatcher.to_prepare { c = 3 }
+    Dispatcher.to_prepare { |*args| a = b = c = 1 }
+    Dispatcher.to_prepare { |*args| b = c = 2 }
+    Dispatcher.to_prepare { |*args| c = 3 }
 
     # Skip the callbacks when already prepared.
     @dispatcher.unprepared = false
@@ -87,8 +87,8 @@ class DispatcherTest < Test::Unit::TestCase
 
   def test_to_prepare_with_identifier_replaces
     a = b = nil
-    Dispatcher.to_prepare(:unique_id) { a = b = 1 }
-    Dispatcher.to_prepare(:unique_id) { a = 2 }
+    Dispatcher.to_prepare(:unique_id) { |*args| a = b = 1 }
+    Dispatcher.to_prepare(:unique_id) { |*args| a = 2 }
 
     @dispatcher.unprepared = true
     @dispatcher.send! :prepare_application
@@ -99,7 +99,7 @@ class DispatcherTest < Test::Unit::TestCase
   def test_to_prepare_only_runs_once_if_not_loading_dependencies
     Dependencies.stubs(:load?).returns(false)
     called = 0
-    Dispatcher.to_prepare(:unprepared_test) { called += 1 }
+    Dispatcher.to_prepare(:unprepared_test) { |*args| called += 1 }
     2.times { dispatch }
     assert_equal 1, called
   end

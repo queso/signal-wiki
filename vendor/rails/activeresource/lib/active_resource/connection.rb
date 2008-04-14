@@ -26,6 +26,15 @@ module ActiveResource
   # 4xx Client Error
   class ClientError < ConnectionError; end # :nodoc:
   
+  # 400 Bad Request
+  class BadRequest < ClientError; end # :nodoc
+  
+  # 401 Unauthorized
+  class UnauthorizedAccess < ClientError; end # :nodoc
+  
+  # 403 Forbidden
+  class ForbiddenAccess < ClientError; end # :nodoc
+  
   # 404 Not Found
   class ResourceNotFound < ClientError; end # :nodoc:
   
@@ -46,7 +55,7 @@ module ActiveResource
   # This class is used by ActiveResource::Base to interface with REST
   # services.
   class Connection
-    attr_reader :site
+    attr_reader :site, :user, :password
     attr_accessor :format
 
     class << self
@@ -59,6 +68,7 @@ module ActiveResource
     # attribute to the URI for the remote resource service.
     def initialize(site, format = ActiveResource::Formats[:xml])
       raise ArgumentError, 'Missing site URI' unless site
+      @user = @password = nil
       self.site = site
       self.format = format
     end
@@ -66,6 +76,18 @@ module ActiveResource
     # Set URI for remote service.
     def site=(site)
       @site = site.is_a?(URI) ? site : URI.parse(site)
+      @user = URI.decode(@site.user) if @site.user
+      @password = URI.decode(@site.password) if @site.password
+    end
+
+    # Set user for remote service.
+    def user=(user)
+      @user = user
+    end
+
+    # Set password for remote service.
+    def password=(password)
+      @password = password
     end
 
     # Execute a GET request.
@@ -92,6 +114,12 @@ module ActiveResource
       request(:post, path, body.to_s, build_request_headers(headers))
     end
 
+    # Execute a HEAD request.
+    # Used to ...
+    def head(path, headers= {})
+      request(:head, path, build_request_headers(headers))
+    end
+
 
     private
       # Makes request to remote service.
@@ -99,7 +127,7 @@ module ActiveResource
         logger.info "#{method.to_s.upcase} #{site.scheme}://#{site.host}:#{site.port}#{path}" if logger
         result = nil
         time = Benchmark.realtime { result = http.send(method, path, *arguments) }
-        logger.info "--> #{result.code} #{result.message} (#{result.body.length}b %.2fs)" % time if logger
+        logger.info "--> #{result.code} #{result.message} (#{result.body ? result.body : 0}b %.2fs)" % time if logger
         handle_response(result)
       end
 
@@ -110,6 +138,12 @@ module ActiveResource
             raise(Redirection.new(response))
           when 200...400
             response
+          when 400
+            raise(BadRequest.new(response))
+          when 401
+            raise(UnauthorizedAccess.new(response))
+          when 403
+            raise(ForbiddenAccess.new(response))
           when 404
             raise(ResourceNotFound.new(response))
           when 405
@@ -145,9 +179,9 @@ module ActiveResource
         authorization_header.update(default_header).update(headers)
       end
       
-      # Sets authorization header; authentication information is pulled from credentials provided with site URI.
+      # Sets authorization header
       def authorization_header
-        (@site.user || @site.password ? { 'Authorization' => 'Basic ' + ["#{@site.user}:#{ @site.password}"].pack('m').delete("\r\n") } : {})
+        (@user || @password ? { 'Authorization' => 'Basic ' + ["#{@user}:#{ @password}"].pack('m').delete("\r\n") } : {})
       end
 
       def logger #:nodoc:

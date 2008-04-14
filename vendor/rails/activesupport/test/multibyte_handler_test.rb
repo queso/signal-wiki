@@ -1,4 +1,7 @@
-require File.dirname(__FILE__) + '/abstract_unit'
+# encoding: utf-8
+require 'abstract_unit'
+
+if RUBY_VERSION < '1.9'
 
 $KCODE = 'UTF8'
 
@@ -69,7 +72,7 @@ module UTF8HandlingTest
     assert_raise(ActiveSupport::Multibyte::Handlers::EncodingError) { @handler.normalize(@bytestring) }
   end
   
-  # Test for the Public Review Issue #29, bad explaination of composition might lead to a
+  # Test for the Public Review Issue #29, bad explanation of composition might lead to a
   # bad implementation: http://www.unicode.org/review/pr-29.html
   def test_normalization_C_pri_29
     [
@@ -364,4 +367,6 @@ class UTF8HandlingTestPure < Test::Unit::TestCase
     common_setup
     @handler = ::ActiveSupport::Multibyte::Handlers::UTF8Handler
   end
+end
+
 end

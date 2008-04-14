@@ -29,8 +29,9 @@ class Page < ActiveRecord::Base
   can_be_flagged :reasons => [:spam, :outdated, :inaccurate]
   
   before_save :set_permalink
-  before_update :set_links
-  after_create  :set_links
+  # before_update :set_links
+  # after_create  :set_links
+  after_save  :set_links
   validates_presence_of :title, :body
   validate_on_update :updatable
 

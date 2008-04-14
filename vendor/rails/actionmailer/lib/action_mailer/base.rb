@@ -40,10 +40,14 @@ module ActionMailer #:nodoc:
   # * <tt>content_type</tt> - Specify the content type of the message. Defaults to <tt>text/plain</tt>.
   # * <tt>headers</tt> - Specify additional headers to be set for the message, e.g. <tt>headers 'X-Mail-Count' => 107370</tt>.
   #
+  # When a <tt>headers 'return-path'</tt> is specified, that value will be used as the 'envelope from'
+  # address. Setting this is useful when you want delivery notifications sent to a different address than
+  # the one in <tt>from</tt>.
+  #
   # The <tt>body</tt> method has special behavior. It takes a hash which generates an instance variable
   # named after each key in the hash containing the value that that key points to.
   #
-  # So, for example, <tt>body "account" => recipient</tt> would result
+  # So, for example, <tt>body :account => recipient</tt> would result
   # in an instance variable <tt>@account</tt> with the value of <tt>recipient</tt> being accessible in the 
   # view.
   #
@@ -298,11 +302,6 @@ module ActionMailer #:nodoc:
     # This defaults to the value for the +default_implicit_parts_order+.
     adv_attr_accessor :implicit_parts_order
     
-    # Override the mailer name, which defaults to an inflected version of the
-    # mailer's class name. If you want to use a template in a non-standard
-    # location, you can use this to specify that location.
-    adv_attr_accessor :mailer_name
-    
     # Defaults to "1.0", but may be explicitly given if needed.
     adv_attr_accessor :mime_version
     
@@ -322,10 +321,35 @@ module ActionMailer #:nodoc:
     # have multiple mailer methods share the same template.
     adv_attr_accessor :template
 
+    # Override the mailer name, which defaults to an inflected version of the
+    # mailer's class name. If you want to use a template in a non-standard
+    # location, you can use this to specify that location.
+    def mailer_name(value = nil)
+      if value
+        self.mailer_name = value
+      else
+        self.class.mailer_name
+      end
+    end
+    
+    def mailer_name=(value)
+      self.class.mailer_name = value
+    end
+
     # The mail object instance referenced by this mailer.
     attr_reader :mail
 
     class << self
+      attr_writer :mailer_name
+
+      def mailer_name
+        @mailer_name ||= name.underscore
+      end
+
+      # for ActionView compatibility
+      alias_method :controller_name, :mailer_name
+      alias_method :controller_path, :mailer_name
+
       def method_missing(method_symbol, *parameters)#:nodoc:
         case method_symbol.id2name
           when /^create_([_a-z]\w*)/  then new($1, *parameters).mail
@@ -372,6 +396,11 @@ module ActionMailer #:nodoc:
       #   ActionMailer::Base.register_template_extension('haml')
       def register_template_extension(extension)
         template_extensions << extension
+      end
+
+      def template_root=(root)
+        write_inheritable_attribute(:template_root, root)
+        ActionView::TemplateFinder.process_view_paths(root)
       end
     end
 
@@ -443,7 +472,10 @@ module ActionMailer #:nodoc:
     # no alternate has been given as the parameter, this will fail.
     def deliver!(mail = @mail)
       raise "no mail object available for delivery!" unless mail
-      logger.info "Sent mail:\n #{mail.encoded}" unless logger.nil?
+      unless logger.nil?
+        logger.info  "Sent mail to #{Array(recipients).join(', ')}"
+        logger.debug "\n#{mail.encoded}"
+      end
 
       begin
         __send__("perform_delivery_#{delivery_method}", mail) if perform_deliveries
@@ -476,6 +508,9 @@ module ActionMailer #:nodoc:
 
       def render(opts)
         body = opts.delete(:body)
+        if opts[:file] && opts[:file] !~ /\//
+          opts[:file] = "#{mailer_name}/#{opts[:file]}"
+        end
         initialize_template_class(body).render(opts)
       end
 
@@ -484,7 +519,7 @@ module ActionMailer #:nodoc:
       end
 
       def initialize_template_class(assigns)
-        ActionView::Base.new(template_path, assigns, self)
+        ActionView::Base.new([template_root], assigns, self)
       end
 
       def sort_parts(parts, order = [])
@@ -559,15 +594,18 @@ module ActionMailer #:nodoc:
       def perform_delivery_smtp(mail)
         destinations = mail.destinations
         mail.ready_to_send
+        sender = mail['return-path'] || mail.from
 
         Net::SMTP.start(smtp_settings[:address], smtp_settings[:port], smtp_settings[:domain], 
             smtp_settings[:user_name], smtp_settings[:password], smtp_settings[:authentication]) do |smtp|
-          smtp.sendmail(mail.encoded, mail.from, destinations)
+          smtp.sendmail(mail.encoded, sender, destinations)
         end
       end
 
       def perform_delivery_sendmail(mail)
-        IO.popen("#{sendmail_settings[:location]} #{sendmail_settings[:arguments]}","w+") do |sm|
+        sendmail_args = sendmail_settings[:arguments]
+        sendmail_args += " -f \"#{mail['return-path']}\"" if mail['return-path']
+        IO.popen("#{sendmail_settings[:location]} #{sendmail_args}","w+") do |sm|
           sm.print(mail.encoded.gsub(/\r/, ''))
           sm.flush
         end

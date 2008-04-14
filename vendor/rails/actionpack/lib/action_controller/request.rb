@@ -3,6 +3,9 @@ require 'stringio'
 require 'strscan'
 
 module ActionController
+  # HTTP methods which are accepted by default. 
+  ACCEPTED_HTTP_METHODS = Set.new(%w( get head put post delete options ))
+
   # CgiRequest and TestRequest provide concrete implementations.
   class AbstractRequest
     cattr_accessor :relative_url_root
@@ -12,18 +15,24 @@ module ActionController
     # such as { 'RAILS_ENV' => 'production' }.
     attr_reader :env
 
+    # The true HTTP request method as a lowercase symbol, such as :get.
+    # UnknownHttpMethod is raised for invalid methods not listed in ACCEPTED_HTTP_METHODS.
+    def request_method
+      @request_method ||= begin
+        method = ((@env['REQUEST_METHOD'] == 'POST' && !parameters[:_method].blank?) ? parameters[:_method].to_s : @env['REQUEST_METHOD']).downcase
+        if ACCEPTED_HTTP_METHODS.include?(method)
+          method.to_sym
+        else
+          raise UnknownHttpMethod, "#{method}, accepted HTTP methods are #{ACCEPTED_HTTP_METHODS.to_a.to_sentence}"
+        end
+      end
+    end
+
     # The HTTP request method as a lowercase symbol, such as :get.
     # Note, HEAD is returned as :get since the two are functionally
     # equivalent from the application's perspective.
     def method
-      @request_method ||=
-        if @env['REQUEST_METHOD'] == 'POST' && !parameters[:_method].blank?
-          parameters[:_method].to_s.downcase.to_sym
-        else
-          @env['REQUEST_METHOD'].downcase.to_sym
-        end
-
-      @request_method == :head ? :get : @request_method
+      request_method == :head ? :get : request_method
     end
 
     # Is this a GET (or HEAD) request?  Equivalent to request.method == :get
@@ -33,27 +42,29 @@ module ActionController
 
     # Is this a POST request?  Equivalent to request.method == :post
     def post?
-      method == :post
+      request_method == :post
     end
 
     # Is this a PUT request?  Equivalent to request.method == :put
     def put?
-      method == :put
+      request_method == :put
     end
 
     # Is this a DELETE request?  Equivalent to request.method == :delete
     def delete?
-      method == :delete
+      request_method == :delete
     end
 
     # Is this a HEAD request? request.method sees HEAD as :get, so check the
     # HTTP method directly.
     def head?
-      @env['REQUEST_METHOD'].downcase.to_sym == :head
+      request_method == :head
     end
 
+    # Provides acccess to the request's HTTP headers, for example:
+    #  request.headers["Content-Type"] # => "text/plain"
     def headers
-      @env
+      @headers ||= ActionController::Http::Headers.new(@env)
     end
 
     def content_length
@@ -102,7 +113,7 @@ module ActionController
     #   end
     def format=(extension)
       parameters[:format] = extension.to_s
-      format
+      @format = Mime::Type.lookup_by_extension(parameters[:format])
     end
 
     # Returns true if the request's "X-Requested-With" header contains
@@ -113,26 +124,41 @@ module ActionController
     end
     alias xhr? :xml_http_request?
 
+    # Which IP addresses are "trusted proxies" that can be stripped from
+    # the right-hand-side of X-Forwarded-For
+    TRUSTED_PROXIES = /^127\.0\.0\.1$|^(10|172\.(1[6-9]|2[0-9]|30|31)|192\.168)\./i
+
     # Determine originating IP address.  REMOTE_ADDR is the standard
     # but will fail if the user is behind a proxy.  HTTP_CLIENT_IP and/or
-    # HTTP_X_FORWARDED_FOR are set by proxies so check for these before
-    # falling back to REMOTE_ADDR.  HTTP_X_FORWARDED_FOR may be a comma-
-    # delimited list in the case of multiple chained proxies; the first is
-    # the originating IP.
-    #
-    # Security note: do not use if IP spoofing is a concern for your
-    # application. Since remote_ip checks HTTP headers for addresses forwarded
-    # by proxies, the client may send any IP. remote_addr can't be spoofed but
-    # also doesn't work behind a proxy, since it's always the proxy's IP.
+    # HTTP_X_FORWARDED_FOR are set by proxies so check for these if
+    # REMOTE_ADDR is a proxy.  HTTP_X_FORWARDED_FOR may be a comma-
+    # delimited list in the case of multiple chained proxies; the last
+    # address which is not trusted is the originating IP.
+
     def remote_ip
-      return @env['HTTP_CLIENT_IP'] if @env.include? 'HTTP_CLIENT_IP'
+      if TRUSTED_PROXIES !~ @env['REMOTE_ADDR']
+        return @env['REMOTE_ADDR']
+      end
+
+      if @env.include? 'HTTP_CLIENT_IP'
+        if @env.include? 'HTTP_X_FORWARDED_FOR'
+          # We don't know which came from the proxy, and which from the user
+          raise ActionControllerError.new(<<EOM)
+IP spoofing attack?!
+HTTP_CLIENT_IP=#{@env['HTTP_CLIENT_IP'].inspect}
+HTTP_X_FORWARDED_FOR=#{@env['HTTP_X_FORWARDED_FOR'].inspect}
+EOM
+        end
+        return @env['HTTP_CLIENT_IP']
+      end
 
       if @env.include? 'HTTP_X_FORWARDED_FOR' then
-        remote_ips = @env['HTTP_X_FORWARDED_FOR'].split(',').reject do |ip|
-          ip.strip =~ /^unknown$|^(10|172\.(1[6-9]|2[0-9]|30|31)|192\.168)\./i
+        remote_ips = @env['HTTP_X_FORWARDED_FOR'].split(',')
+        while remote_ips.size > 1 && TRUSTED_PROXIES =~ remote_ips.last.strip
+          remote_ips.pop
         end
 
-        return remote_ips.first.strip unless remote_ips.empty?
+        return remote_ips.last.strip
       end
 
       @env['REMOTE_ADDR']
@@ -288,11 +314,12 @@ module ActionController
       @symbolized_path_parameters ||= path_parameters.symbolize_keys
     end
 
-    # Returns a hash with the parameters used to form the path of the request 
+    # Returns a hash with the parameters used to form the path of the request.
+    # Returned hash keys are strings.  See <tt>symbolized_path_parameters</tt> for symbolized keys.
     #
     # Example: 
     #
-    #   {:action => 'my_action', :controller => 'my_controller'}
+    #   {'action' => 'my_action', 'controller' => 'my_controller'}
     def path_parameters
       @path_parameters ||= {}
     end
@@ -375,6 +402,14 @@ module ActionController
             body.blank? ? {} : Hash.from_xml(body).with_indifferent_access
           when :yaml
             YAML.load(body)
+          when :json
+            if body.blank?
+              {}
+            else
+              data = ActiveSupport::JSON.decode(body)
+              data = {:_json => data} unless data.is_a?(Hash)
+              data.with_indifferent_access
+            end
           else
             {}
         end
@@ -463,7 +498,7 @@ module ActionController
             when Array
               value.map { |v| get_typed_value(v) }
             else
-              if value.is_a?(UploadedFile)
+              if value.respond_to? :original_filename
                 # Uploaded file
                 if value.original_filename
                   value
@@ -480,7 +515,6 @@ module ActionController
           end
         end
 
-
         MULTIPART_BOUNDARY = %r|\Amultipart/form-data.*boundary=\"?([^\";,]+)\"?|n
 
         EOL = "\015\012"
@@ -488,7 +522,7 @@ module ActionController
         def read_multipart(body, boundary, content_length, env)
           params = Hash.new([])
           boundary = "--" + boundary
-          quoted_boundary = Regexp.quote(boundary, "n")
+          quoted_boundary = Regexp.quote(boundary)
           buf = ""
           bufsize = 10 * 1024
           boundary_end=""
@@ -573,12 +607,17 @@ module ActionController
             else
               params[name] = [content]
             end
-            break if buf.size == 0
             break if content_length == -1
           end
           raise EOFError, "bad boundary end of body part" unless boundary_end=~/--/
 
-          body.rewind if body.respond_to?(:rewind)
+          begin
+            body.rewind if body.respond_to?(:rewind)
+          rescue Errno::ESPIPE
+            # Handles exceptions raised by input streams that cannot be rewound
+            # such as when using plain CGI under Apache
+          end
+
           params
         end
     end
@@ -656,6 +695,7 @@ module ActionController
             else
               top << {key => value}.with_indifferent_access
               push top.last
+              value = top[key]
             end
           else
             top << value
@@ -663,7 +703,8 @@ module ActionController
         elsif top.is_a? Hash
           key = CGI.unescape(key)
           parent << (@top = {}) if top.key?(key) && parent.is_a?(Array)
-          return top[key] ||= value
+          top[key] ||= value
+          return top[key]
         else
           raise ArgumentError, "Don't know what to do: top is #{top.inspect}"
         end
@@ -672,7 +713,7 @@ module ActionController
       end
 
       def type_conflict!(klass, value)
-        raise TypeError, "Conflicting types for parameter containers. Expected an instance of #{klass} but found an instance of #{value.class}. This can be caused by colliding Array and Hash parameters like qs[]=value&qs[key]=value."
+        raise TypeError, "Conflicting types for parameter containers. Expected an instance of #{klass} but found an instance of #{value.class}. This can be caused by colliding Array and Hash parameters like qs[]=value&qs[key]=value. (The parameters received were #{value.inspect}.)"
       end
   end
 

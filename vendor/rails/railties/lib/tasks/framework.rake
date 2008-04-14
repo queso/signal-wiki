@@ -4,6 +4,7 @@ namespace :rails do
     task :gems do
       deps = %w(actionpack activerecord actionmailer activesupport activeresource)
       require 'rubygems'
+      require 'rubygems/gem_runner'
       Gem.manage_gems
 
       rails = (version = ENV['VERSION']) ?
@@ -21,14 +22,19 @@ namespace :rails do
       rm_rf   "vendor/rails"
       mkdir_p "vendor/rails"
 
-      chdir("vendor/rails") do
-        rails.dependencies.select { |g| deps.include? g.name }.each do |g|
-          Gem::GemRunner.new.run(["unpack", "-v", "#{g.version_requirements}", "#{g.name}"])
-          mv(Dir.glob("#{g.name}*").first, g.name)
-        end
+      begin
+        chdir("vendor/rails") do
+          rails.dependencies.select { |g| deps.include? g.name }.each do |g|
+            Gem::GemRunner.new.run(["unpack", g.name, "--version", g.version_requirements.to_s])
+            mv(Dir.glob("#{g.name}*").first, g.name)
+          end
 
-        Gem::GemRunner.new.run(["unpack", "-v", "=#{version}", "rails"])
-        FileUtils.mv(Dir.glob("rails*").first, "railties")
+          Gem::GemRunner.new.run(["unpack", "rails", "--version", "=#{version}"])
+          FileUtils.mv(Dir.glob("rails*").first, "railties")
+        end
+      rescue Exception
+        rm_rf "vendor/rails"
+        raise
       end
     end
 
@@ -63,6 +69,9 @@ namespace :rails do
       for framework in %w(railties actionpack activerecord actionmailer activesupport activeresource)
         system "svn export #{rails_svn}/#{framework} vendor/rails/#{framework}" + (ENV['REVISION'] ? " -r #{ENV['REVISION']}" : "")
       end
+      
+      puts "Updating current scripts, javascripts, and configuration settings"
+      Rake::Task["rails:update"].invoke
     end
   end
 
@@ -99,7 +108,7 @@ namespace :rails do
       require 'railties_path'  
       project_dir = RAILS_ROOT + '/public/javascripts/'
       scripts = Dir[RAILTIES_PATH + '/html/javascripts/*.js']
-      scripts.reject!{|s| File.basename(s) == 'application.js'} if File.exists?(project_dir + 'application.js')
+      scripts.reject!{|s| File.basename(s) == 'application.js'} if File.exist?(project_dir + 'application.js')
       FileUtils.cp(scripts, project_dir)
     end
 

@@ -41,14 +41,14 @@ module ActionController #:nodoc:
     end
 
     protected
-      def render_with_benchmark(options = nil, deprecated_status = nil, &block)
+      def render_with_benchmark(options = nil, extra_options = {}, &block)
         unless logger
-          render_without_benchmark(options, &block)
+          render_without_benchmark(options, extra_options, &block)
         else
           db_runtime = ActiveRecord::Base.connection.reset_runtime if Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
 
           render_output = nil
-          @rendering_runtime = Benchmark::measure{ render_output = render_without_benchmark(options, &block) }.real
+          @rendering_runtime = Benchmark::realtime{ render_output = render_without_benchmark(options, extra_options, &block) }
 
           if Object.const_defined?("ActiveRecord") && ActiveRecord::Base.connected?
             @db_rt_before_render = db_runtime
@@ -79,15 +79,16 @@ module ActionController #:nodoc:
       end
 
       def rendering_runtime(runtime)
-        " | Rendering: #{sprintf("%.5f", @rendering_runtime)} (#{sprintf("%d", (@rendering_runtime * 100) / runtime)}%)"
+        percentage = @rendering_runtime * 100 / runtime
+        " | Rendering: %.5f (%d%%)" % [@rendering_runtime, percentage.to_i]
       end
 
       def active_record_runtime(runtime)
         db_runtime    = ActiveRecord::Base.connection.reset_runtime
         db_runtime    += @db_rt_before_render if @db_rt_before_render
         db_runtime    += @db_rt_after_render if @db_rt_after_render
-        db_percentage = (db_runtime * 100) / runtime
-        " | DB: #{sprintf("%.5f", db_runtime)} (#{sprintf("%d", db_percentage)}%)"
+        db_percentage = db_runtime * 100 / runtime
+        " | DB: %.5f (%d%%)" % [db_runtime, db_percentage.to_i]
       end
   end
 end

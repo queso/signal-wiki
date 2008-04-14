@@ -1,7 +1,10 @@
-require File.dirname(__FILE__) + '/abstract_unit'
+require 'abstract_unit'
 require 'open-uri'
 
+if RUBY_VERSION < '1.9'
+
 $KCODE = 'UTF8'
+
 UNIDATA_URL = "http://www.unicode.org/Public/#{ActiveSupport::Multibyte::UNICODE_VERSION}/ucd"
 UNIDATA_FILE = '/NormalizationTest.txt'
 CACHE_DIR = File.dirname(__FILE__) + '/cache'
@@ -10,7 +13,7 @@ class Downloader
   def self.download(from, to)
     unless File.exist?(to)
       $stderr.puts "Downloading #{from} to #{to}"
-      unless File.exists?(File.dirname(to))
+      unless File.exist?(File.dirname(to))
         system "mkdir -p #{File.dirname(to)}"
       end
       open(from) do |source|
@@ -31,7 +34,7 @@ class String
   end unless ''.respond_to?(:ui)
 end
 
-Dir.mkdir(CACHE_DIR) unless File.exists?(CACHE_DIR)
+Dir.mkdir(CACHE_DIR) unless File.exist?(CACHE_DIR)
 Downloader.download(UNIDATA_URL + UNIDATA_FILE, CACHE_DIR + UNIDATA_FILE)
 
 module ConformanceTest
@@ -138,4 +141,6 @@ class ConformanceTestPure < Test::Unit::TestCase
   def setup
     @handler = ::ActiveSupport::Multibyte::Handlers::UTF8Handler
   end
+end
+
 end

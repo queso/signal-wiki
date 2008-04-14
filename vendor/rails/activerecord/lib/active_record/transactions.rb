@@ -15,7 +15,7 @@ module ActiveRecord
       end
     end
 
-    # Transactions are protective blocks where SQL statements are only permanent if they can all succeed as one atomic action. 
+    # Transactions are protective blocks where SQL statements are only permanent if they can all succeed as one atomic action.
     # The classic example is a transfer between two accounts where you can only have a deposit if the withdrawal succeeded and
     # vice versa. Transactions enforce the integrity of the database and guard the data against program errors or database break-downs.
     # So basically you should use transaction blocks whenever you have a number of statements that must be executed together or
@@ -28,18 +28,7 @@ module ActiveRecord
     #
     # This example will only take money from David and give to Mary if neither +withdrawal+ nor +deposit+ raises an exception.
     # Exceptions will force a ROLLBACK that returns the database to the state before the transaction was begun. Be aware, though,
-    # that the objects by default will _not_ have their instance data returned to their pre-transactional state.
-    #
-    # == Rolling back a transaction manually
-    #
-    # Instead of relying on exceptions to rollback your transactions, you can also do so manually from within the scope
-    # of the transaction by accepting a yield parameter and calling rollback! on it. Example:
-    #
-    #   transaction do |transaction|
-    #     david.withdrawal(100)
-    #     mary.deposit(100)
-    #     transaction.rollback! # rolls back the transaction that was otherwise going to be successful
-    #   end
+    # that the objects will _not_ have their instance data returned to their pre-transactional state.
     #
     # == Different ActiveRecord classes in a single transaction
     #
@@ -80,17 +69,16 @@ module ActiveRecord
     # == Exception handling
     #
     # Also have in mind that exceptions thrown within a transaction block will be propagated (after triggering the ROLLBACK), so you
-    # should be ready to catch those in your application code.
+    # should be ready to catch those in your application code. One exception is the ActiveRecord::Rollback exception, which will
+    # trigger a ROLLBACK when raised, but not be re-raised by the transaction block.
     module ClassMethods
       def transaction(&block)
-        previous_handler = trap('TERM') { raise TransactionError, "Transaction aborted" }
         increment_open_transactions
 
         begin
           connection.transaction(Thread.current['start_db_transaction'], &block)
         ensure
           decrement_open_transactions
-          trap('TERM', previous_handler)
         end
       end
 
@@ -126,7 +114,7 @@ module ActiveRecord
     def rollback_active_record_state!
       id_present = has_attribute?(self.class.primary_key)
       previous_id = id
-      previous_new_record = @new_record
+      previous_new_record = new_record?
       yield
     rescue Exception
       @new_record = previous_new_record
@@ -135,7 +123,7 @@ module ActiveRecord
       else
         @attributes.delete(self.class.primary_key)
         @attributes_cache.delete(self.class.primary_key)
-      end  
+      end
       raise
     end
   end

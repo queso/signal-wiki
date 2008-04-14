@@ -1,5 +1,4 @@
-require "#{File.dirname(__FILE__)}/abstract_unit"
-require 'base64'
+require 'abstract_unit'
 
 class ConnectionTest < Test::Unit::TestCase
   ResponseCodeStub = Struct.new(:code)
@@ -28,6 +27,7 @@ class ConnectionTest < Test::Unit::TestCase
       mock.delete "/people/2.xml", @header, nil, 200
       mock.post   "/people.xml",   {}, nil, 201, 'Location' => '/people/5.xml'
       mock.post   "/members.xml",  {}, @header, 201, 'Location' => '/people/6.xml'
+      mock.head   "/people/1.xml", {}, nil, 200
     end
   end
 
@@ -37,6 +37,15 @@ class ConnectionTest < Test::Unit::TestCase
       expected = ResponseCodeStub.new(code)
       assert_equal expected, handle_response(expected)
     end
+
+    # 400 is a bad request (e.g. malformed URI or missing request parameter)
+    assert_response_raises ActiveResource::BadRequest, 400
+
+    # 401 is an unauthorized request
+    assert_response_raises ActiveResource::UnauthorizedAccess, 401
+
+    # 403 is a forbidden requst (and authorizing will not help)
+    assert_response_raises ActiveResource::ForbiddenAccess, 403
 
     # 404 is a missing resource.
     assert_response_raises ActiveResource::ResourceNotFound, 404
@@ -51,7 +60,7 @@ class ConnectionTest < Test::Unit::TestCase
     assert_response_raises ActiveResource::ResourceInvalid, 422
 
     # 4xx are client errors.
-    [401, 499].each do |code|
+    [402, 499].each do |code|
       assert_response_raises ActiveResource::ClientError, code
     end
 
@@ -95,6 +104,12 @@ class ConnectionTest < Test::Unit::TestCase
   def test_get
     matz = @conn.get("/people/1.xml")
     assert_equal "Matz", matz["name"]
+  end
+
+  def test_head
+    response = @conn.head("/people/1.xml")
+    assert response.body.blank?
+    assert_equal 200, response.code
   end
 
   def test_get_with_header

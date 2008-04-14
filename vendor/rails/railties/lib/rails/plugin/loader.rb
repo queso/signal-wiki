@@ -10,7 +10,7 @@ module Rails
       # all plugins, and adds all plugin load paths, when it is created. The plugins
       # are then fully loaded (init.rb is evaluated) when load_plugins is called.
       #
-      # It is the loader's responsibilty to ensure that only the plugins specified
+      # It is the loader's responsibility to ensure that only the plugins specified
       # in the configuration are actually loaded, and that the order defined
       # is respected.
       def initialize(initializer)
@@ -46,7 +46,9 @@ module Rails
           plugin.load_paths.each do |path|
             $LOAD_PATH.insert(application_lib_index + 1, path)
             Dependencies.load_paths      << path
-            Dependencies.load_once_paths << path
+            unless Rails.configuration.reload_plugins?
+              Dependencies.load_once_paths << path
+            end
           end
         end
         $LOAD_PATH.uniq!

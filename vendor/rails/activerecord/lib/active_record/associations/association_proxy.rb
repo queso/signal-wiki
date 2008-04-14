@@ -1,7 +1,51 @@
 module ActiveRecord
   module Associations
+    # This is the root class of all association proxies:
+    #
+    #   AssociationProxy
+    #     BelongsToAssociation
+    #       HasOneAssociation
+    #     BelongsToPolymorphicAssociation
+    #     AssociationCollection
+    #       HasAndBelongsToManyAssociation
+    #       HasManyAssociation
+    #         HasManyThroughAssociation
+    #            HasOneThroughAssociation
+    #
+    # Association proxies in Active Record are middlemen between the object that
+    # holds the association, known as the <tt>@owner</tt>, and the actual associated
+    # object, known as the <tt>@target</tt>. The kind of association any proxy is
+    # about is available in <tt>@reflection</tt>. That's an instance of the class
+    # ActiveRecord::Reflection::AssociationReflection.
+    #
+    # For example, given
+    #
+    #   class Blog < ActiveRecord::Base
+    #     has_many :posts
+    #   end
+    #
+    #   blog = Blog.find(:first)
+    #
+    # the association proxy in <tt>blog.posts</tt> has the object in +blog+ as
+    # <tt>@owner</tt>, the collection of its posts as <tt>@target</tt>, and
+    # the <tt>@reflection</tt> object represents a <tt>:has_many</tt> macro.
+    #
+    # This class has most of the basic instance methods removed, and delegates
+    # unknown methods to <tt>@target</tt> via <tt>method_missing</tt>. As a
+    # corner case, it even removes the +class+ method and that's why you get
+    #
+    #   blog.posts.class # => Array
+    #
+    # though the object behind <tt>blog.posts</tt> is not an Array, but an
+    # ActiveRecord::Associations::HasManyAssociation.
+    #
+    # The <tt>@target</tt> object is not loaded until needed. For example,
+    #
+    #   blog.posts.count
+    #
+    # is computed directly through SQL and does not trigger by itself the
+    # instantiation of the actual post records.
     class AssociationProxy #:nodoc:
-      attr_reader :reflection
       alias_method :proxy_respond_to?, :respond_to?
       alias_method :proxy_extend, :extend
       delegate :to_param, :to => :proxy_target
@@ -12,15 +56,15 @@ module ActiveRecord
         Array(reflection.options[:extend]).each { |ext| proxy_extend(ext) }
         reset
       end
-      
+
       def proxy_owner
         @owner
       end
-      
+
       def proxy_reflection
         @reflection
       end
-      
+
       def proxy_target
         @target
       end
@@ -28,50 +72,51 @@ module ActiveRecord
       def respond_to?(symbol, include_priv = false)
         proxy_respond_to?(symbol, include_priv) || (load_target && @target.respond_to?(symbol, include_priv))
       end
-      
+
       # Explicitly proxy === because the instance method removal above
       # doesn't catch it.
       def ===(other)
         load_target
         other === @target
       end
-      
+
       def aliased_table_name
         @reflection.klass.table_name
       end
-      
+
       def conditions
         @conditions ||= interpolate_sql(sanitize_sql(@reflection.options[:conditions])) if @reflection.options[:conditions]
       end
       alias :sql_conditions :conditions
-      
+
       def reset
-        @target = nil
         @loaded = false
+        @target = nil
       end
 
       def reload
         reset
         load_target
+        self unless @target.nil?
       end
 
       def loaded?
         @loaded
       end
-      
+
       def loaded
         @loaded = true
       end
-      
+
       def target
         @target
       end
-      
+
       def target=(target)
         @target = target
         loaded
       end
-      
+
       def inspect
         reload unless loaded?
         @target.inspect
@@ -81,7 +126,7 @@ module ActiveRecord
         def dependent?
           @reflection.options[:dependent]
         end
-        
+
         def quoted_record_ids(records)
           records.map { |record| record.quoted_id }.join(',')
         end
@@ -114,14 +159,23 @@ module ActiveRecord
             :offset  => @reflection.options[:offset],
             :joins   => @reflection.options[:joins],
             :include => @reflection.options[:include],
-            :select  => @reflection.options[:select]
+            :select  => @reflection.options[:select],
+            :readonly  => @reflection.options[:readonly]
           )
         end
-        
+
+        def with_scope(*args, &block)
+          @reflection.klass.send :with_scope, *args, &block
+        end
+          
       private
-        def method_missing(method, *args, &block)
-          if load_target        
-            @target.send(method, *args, &block)
+        def method_missing(method, *args)
+          if load_target
+            if block_given?
+              @target.send(method, *args)  { |*block_args| yield(*block_args) }
+            else
+              @target.send(method, *args)
+            end
           end
         end
 

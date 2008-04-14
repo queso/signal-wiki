@@ -1,6 +1,7 @@
-require 'dispatcher'
 require 'stringio'
 require 'uri'
+
+require 'action_controller/dispatcher'
 require 'action_controller/test_process'
 
 module ActionController
@@ -53,6 +54,9 @@ module ActionController
 
       # A running counter of the number of requests processed.
       attr_accessor :request_count
+
+      class MultiPartNeededException < Exception
+      end
 
       # Create and initialize a new +Session+ instance.
       def initialize
@@ -121,23 +125,38 @@ module ActionController
         status
       end
 
-      # Performs a GET request, following any subsequent redirect. Note that
-      # the redirects are followed until the response is not a redirect--this
-      # means you may run into an infinite loop if your redirect loops back to
-      # itself. Headers are treated in the same way as #get.
-      def get_via_redirect(path, args={}, headers = {})
-        get path, args, headers
+      # Performs a request using the specified method, following any subsequent
+      # redirect. Note that the redirects are followed until the response is
+      # not a redirect--this means you may run into an infinite loop if your
+      # redirect loops back to itself.
+      def request_via_redirect(http_method, path, parameters = nil, headers = nil)
+        send(http_method, path, parameters, headers)
         follow_redirect! while redirect?
         status
       end
 
-      # Performs a POST request, following any subsequent redirect. This is
-      # vulnerable to infinite loops, the same as #get_via_redirect. Headers are
-      # treated in the same way as #get.
-      def post_via_redirect(path, args={}, headers = {})
-        post path, args, headers
-        follow_redirect! while redirect?
-        status
+      # Performs a GET request, following any subsequent redirect.
+      # See #request_via_redirect() for more information.
+      def get_via_redirect(path, parameters = nil, headers = nil)
+        request_via_redirect(:get, path, parameters, headers)
+      end
+
+      # Performs a POST request, following any subsequent redirect.
+      # See #request_via_redirect() for more information.
+      def post_via_redirect(path, parameters = nil, headers = nil)
+        request_via_redirect(:post, path, parameters, headers)
+      end
+
+      # Performs a PUT request, following any subsequent redirect.
+      # See #request_via_redirect() for more information.
+      def put_via_redirect(path, parameters = nil, headers = nil)
+        request_via_redirect(:put, path, parameters, headers)
+      end
+
+      # Performs a DELETE request, following any subsequent redirect.
+      # See #request_via_redirect() for more information.
+      def delete_via_redirect(path, parameters = nil, headers = nil)
+        request_via_redirect(:delete, path, parameters, headers)
       end
 
       # Returns +true+ if the last response was a redirect.
@@ -187,7 +206,7 @@ module ActionController
       def xml_http_request(request_method, path, parameters = nil, headers = nil)
         headers ||= {}
         headers['X-Requested-With'] = 'XMLHttpRequest'
-        headers['Accept'] = 'text/javascript, text/html, application/xml, text/xml, */*'
+        headers['Accept'] ||= 'text/javascript, text/html, application/xml, text/xml, */*'
 
         process(request_method, path, parameters, headers)
       end
@@ -261,7 +280,7 @@ module ActionController
           ActionController::Base.clear_last_instantiation!
 
           cgi = StubCGI.new(env, data)
-          Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, cgi.stdoutput)
+          ActionController::Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, cgi.stdoutput)
           @result = cgi.stdoutput.string
           @request_count += 1
 
@@ -278,15 +297,19 @@ module ActionController
 
           parse_result
           return status
+        rescue MultiPartNeededException
+          boundary = "----------XnJLe9ZIbbGUYtzPQJ16u1"
+          status = process(method, path, multipart_body(parameters, boundary), (headers || {}).merge({"CONTENT_TYPE" => "multipart/form-data; boundary=#{boundary}"}))
+          return status
         end
 
         # Parses the result of the response and extracts the various values,
         # like cookies, status, headers, etc.
         def parse_result
-          headers, result_body = @result.split(/\r\n\r\n/, 2)
+          response_headers, result_body = @result.split(/\r\n\r\n/, 2)
 
           @headers = Hash.new { |h,k| h[k] = [] }
-          headers.each_line do |line|
+          response_headers.to_s.each_line do |line|
             key, value = line.strip.split(/:\s*/, 2)
             @headers[key.downcase] << value
           end
@@ -296,7 +319,7 @@ module ActionController
             @cookies[name] = value
           end
 
-          @status, @status_message = @headers["status"].first.split(/ /)
+          @status, @status_message = @headers["status"].first.to_s.split(/ /)
           @status = @status.to_i
         end
 
@@ -326,7 +349,9 @@ module ActionController
         # Convert the given parameters to a request string. The parameters may
         # be a string, +nil+, or a Hash.
         def requestify(parameters, prefix=nil)
-          if Hash === parameters
+          if TestUploadedFile === parameters
+            raise MultiPartNeededException
+          elsif Hash === parameters
             return nil if parameters.empty?
             parameters.map { |k,v| requestify(v, name_with_prefix(prefix, k)) }.join("&")
           elsif Array === parameters
@@ -336,6 +361,45 @@ module ActionController
           else
             "#{CGI.escape(prefix)}=#{CGI.escape(parameters.to_s)}"
           end
+        end
+
+        def multipart_requestify(params, first=true)
+          returning Hash.new do |p|
+            params.each do |key, value|
+              k = first ? CGI.escape(key.to_s) : "[#{CGI.escape(key.to_s)}]"
+              if Hash === value
+                multipart_requestify(value, false).each do |subkey, subvalue|
+                  p[k + subkey] = subvalue
+                end
+              else
+                p[k] = value
+              end
+            end
+          end
+        end
+
+        def multipart_body(params, boundary)
+          multipart_requestify(params).map do |key, value|
+            if value.respond_to?(:original_filename)
+              File.open(value.path) do |f|
+                <<-EOF
+--#{boundary}\r
+Content-Disposition: form-data; name="#{key}"; filename="#{CGI.escape(value.original_filename)}"\r
+Content-Type: #{value.content_type}\r
+Content-Length: #{File.stat(value.path).size}\r
+\r
+#{f.read}\r
+EOF
+              end
+            else
+<<-EOF
+--#{boundary}\r
+Content-Disposition: form-data; name="#{key}"\r
+\r
+#{value}\r
+EOF
+            end
+          end.join("")+"--#{boundary}--\r"
         end
     end
 

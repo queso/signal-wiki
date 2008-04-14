@@ -21,8 +21,19 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #++
 
+require 'action_view/template_handler'
+require 'action_view/template_handlers/compilable'
+require 'action_view/template_handlers/builder'
+require 'action_view/template_handlers/erb'
+require 'action_view/template_handlers/rjs'
+
+require 'action_view/template_finder'
+require 'action_view/template'
+require 'action_view/partial_template'
+
 require 'action_view/base'
 require 'action_view/partials'
+require 'action_view/template_error'
 
 ActionView::Base.class_eval do
   include ActionView::Partials

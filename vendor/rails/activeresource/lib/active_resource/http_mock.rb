@@ -9,8 +9,8 @@ module ActiveResource
         @responses = responses
       end
 
-      for method in [ :post, :put, :get, :delete ]
-        module_eval <<-EOE
+      for method in [ :post, :put, :get, :delete, :head ]
+        module_eval <<-EOE, __FILE__, __LINE__
           def #{method}(path, request_headers = {}, body = nil, status = 200, response_headers = {})
             @responses[Request.new(:#{method}, path, nil, request_headers)] = Response.new(body || "", status, response_headers)
           end
@@ -34,7 +34,7 @@ module ActiveResource
         end
 
         if block_given?
-          yield Responder.new(responses) 
+          yield Responder.new(responses)
         else
           Responder.new(responses)
         end
@@ -47,21 +47,21 @@ module ActiveResource
     end
 
     for method in [ :post, :put ]
-      module_eval <<-EOE
+      module_eval <<-EOE, __FILE__, __LINE__
         def #{method}(path, body, headers)
           request = ActiveResource::Request.new(:#{method}, path, body, headers)
           self.class.requests << request
-          self.class.responses[request] || raise(InvalidRequestError.new("No response recorded for: \#{request.inspect}"))
+          self.class.responses[request] || raise(InvalidRequestError.new("No response recorded for \#{request}"))
         end
       EOE
     end
 
-    for method in [ :get, :delete ]
-      module_eval <<-EOE
+    for method in [ :get, :delete, :head ]
+      module_eval <<-EOE, __FILE__, __LINE__
         def #{method}(path, headers)
           request = ActiveResource::Request.new(:#{method}, path, nil, headers)
           self.class.requests << request
-          self.class.responses[request] || raise(InvalidRequestError.new("No response recorded for: \#{request.inspect}"))
+          self.class.responses[request] || raise(InvalidRequestError.new("No response recorded for \#{request}"))
         end
       EOE
     end
@@ -75,8 +75,7 @@ module ActiveResource
     attr_accessor :path, :method, :body, :headers
 
     def initialize(method, path, body = nil, headers = {})
-      @method, @path, @body, @headers = method, path, body, headers.dup
-      @headers.update('Content-Type' => 'application/xml')
+      @method, @path, @body, @headers = method, path, body, headers.reverse_merge('Content-Type' => 'application/xml')
     end
 
     def ==(other_request)
@@ -102,6 +101,17 @@ module ActiveResource
     def initialize(body, message = 200, headers = {})
       @body, @message, @headers = body, message.to_s, headers
       @code = @message[0,3].to_i
+
+      resp_cls = Net::HTTPResponse::CODE_TO_OBJ[@code.to_s]
+      if resp_cls && !resp_cls.body_permitted?
+        @body = nil
+      end
+
+      if @body.nil?
+        self['Content-Length'] = "0"
+      else
+        self['Content-Length'] = body.size.to_s
+      end
     end
 
     def success?
@@ -115,7 +125,7 @@ module ActiveResource
     def []=(key, value)
       headers[key] = value
     end
-    
+
     def ==(other)
       if (other.is_a?(Response))
         other.body == body && other.message == message && other.headers == headers

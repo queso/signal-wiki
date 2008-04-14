@@ -154,7 +154,7 @@ module ActionController #:nodoc:
       def render_optional_error_file(status_code)
         status = interpret_status(status_code)
         path = "#{RAILS_ROOT}/public/#{status[0,3]}.html"
-        if File.exists?(path)
+        if File.exist?(path)
           render :file => path, :status => status
         else
           head status
@@ -227,7 +227,7 @@ module ActionController #:nodoc:
           # assume they should exist at this point. An early raised exception
           # could trigger some other handler and the array could include
           # precisely a string whose corresponding constant has not yet been
-          # seen. This is why we are tolerant to unkown constants.
+          # seen. This is why we are tolerant to unknown constants.
           #
           # Note that this tolerance only matters if the exception was given as
           # a string, otherwise a NameError will be raised by the interpreter

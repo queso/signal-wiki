@@ -89,7 +89,7 @@ module ActiveRecord
       # See also TableDefinition#column for details on how to create columns.
       def create_table(table_name, options = {})
         table_definition = TableDefinition.new(self)
-        table_definition.primary_key(options[:primary_key] || "id") unless options[:id] == false
+        table_definition.primary_key(options[:primary_key] || Base.get_primary_key(table_name)) unless options[:id] == false
 
         yield table_definition
 
@@ -161,12 +161,12 @@ module ActiveRecord
       # an Array of Symbols.
       #
       # The index will be named after the table and the first column name,
-      # unless you pass +:name+ as an option.
+      # unless you pass <tt>:name</tt> as an option.
       #
       # When creating an index on multiple columns, the first column is used as a name
       # for the index. For example, when you specify an index on two columns
-      # [+:first+, +:last+], the DBMS creates an index for both columns as well as an
-      # index for the first column +:first+. Using just the first name for this index
+      # [<tt>:first</tt>, <tt>:last</tt>], the DBMS creates an index for both columns as well as an
+      # index for the first column <tt>:first</tt>. Using just the first name for this index
       # makes sense, because you will never have to create a singular index with this
       # name.
       #
@@ -232,49 +232,66 @@ module ActiveRecord
 
       # Should not be called normally, but this operation is non-destructive.
       # The migrations module handles this automatically.
-      def initialize_schema_information
-        begin
-          execute "CREATE TABLE #{quote_table_name(ActiveRecord::Migrator.schema_info_table_name)} (version #{type_to_sql(:integer)})"
-          execute "INSERT INTO #{quote_table_name(ActiveRecord::Migrator.schema_info_table_name)} (version) VALUES(0)"
-        rescue ActiveRecord::StatementInvalid
-          # Schema has been initialized
-        end
-      end
+      def initialize_schema_migrations_table
+        sm_table = ActiveRecord::Migrator.schema_migrations_table_name
 
-      def dump_schema_information #:nodoc:
-        begin
-          if (current_schema = ActiveRecord::Migrator.current_version) > 0
-            return "INSERT INTO #{quote_table_name(ActiveRecord::Migrator.schema_info_table_name)} (version) VALUES (#{current_schema})" 
+        unless tables.detect { |t| t == sm_table }
+          create_table(sm_table, :id => false) do |schema_migrations_table|
+            schema_migrations_table.column :version, :string, :null => false
           end
-        rescue ActiveRecord::StatementInvalid 
-          # No Schema Info
+          add_index sm_table, :version, :unique => true,
+            :name => 'unique_schema_migrations'
+
+          # Backwards-compatibility: if we find schema_info, assume we've
+          # migrated up to that point:
+          si_table = Base.table_name_prefix + 'schema_info' + Base.table_name_suffix
+
+          if tables.detect { |t| t == si_table }
+
+            old_version = select_value("SELECT version FROM #{quote_table_name(si_table)}").to_i
+            assume_migrated_upto_version(old_version)
+            drop_table(si_table)
+          end
         end
       end
 
+      def assume_migrated_upto_version(version)
+        sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
+        migrated = select_values("SELECT version FROM #{sm_table}").map(&:to_i)
+        versions = Dir['db/migrate/[0-9]*_*.rb'].map do |filename|
+          filename.split('/').last.split('_').first.to_i
+        end
+
+        execute "INSERT INTO #{sm_table} (version) VALUES ('#{version}')" unless migrated.include?(version.to_i)
+        (versions - migrated).select { |v| v < version.to_i }.each do |v|
+          execute "INSERT INTO #{sm_table} (version) VALUES ('#{v}')"
+        end
+      end
 
       def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
         if native = native_database_types[type]
           column_type_sql = native.is_a?(Hash) ? native[:name] : native
+
           if type == :decimal # ignore limit, use precision and scale
-            precision ||= native[:precision]
             scale ||= native[:scale]
-            if precision
+
+            if precision ||= native[:precision]
               if scale
                 column_type_sql << "(#{precision},#{scale})"
               else
                 column_type_sql << "(#{precision})"
               end
-            else
-              raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified" if scale
+            elsif scale
+              raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified"
             end
-            column_type_sql
-          else
-            limit ||= native[:limit]
-            column_type_sql << "(#{limit})" if limit
-            column_type_sql
+
+          elsif limit ||= native.is_a?(Hash) && native[:limit]
+            column_type_sql << "(#{limit})"
           end
+
+          column_type_sql
         else
-          column_type_sql = type
+          type
         end
       end
 
@@ -297,6 +314,22 @@ module ActiveRecord
         sql << " ORDER BY #{options[:order]}"
       end
 
+      # Adds timestamps (created_at and updated_at) columns to the named table.
+      # ===== Examples
+      #  add_timestamps(:suppliers)
+      def add_timestamps(table_name)
+        add_column table_name, :created_at, :datetime
+        add_column table_name, :updated_at, :datetime    
+      end
+      
+      # Removes the timestamp columns (created_at and updated_at) from the table definition.
+      # ===== Examples
+      #  remove_timestamps(:suppliers)
+      def remove_timestamps(table_name)
+        remove_column table_name, :updated_at   
+        remove_column table_name, :created_at       
+      end
+      
       protected
         def options_include_default?(options)
           options.include?(:default) && !(options[:null] == false && options[:default].nil?)

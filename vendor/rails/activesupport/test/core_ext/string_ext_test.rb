@@ -1,5 +1,6 @@
+# encoding: utf-8
 require 'date'
-require File.dirname(__FILE__) + '/../abstract_unit'
+require 'abstract_unit'
 require 'inflector_test_cases'
 
 class StringInflectionsTest < Test::Unit::TestCase
@@ -78,6 +79,11 @@ class StringInflectionsTest < Test::Unit::TestCase
     end
   end
 
+  def test_ord
+    assert_equal 97, 'a'.ord
+    assert_equal 97, 'abc'.ord
+  end
+
   def test_string_to_time
     assert_equal Time.utc(2005, 2, 27, 23, 50), "2005-02-27 23:50".to_time
     assert_equal Time.local(2005, 2, 27, 23, 50), "2005-02-27 23:50".to_time(:local)
@@ -143,25 +149,51 @@ class StringInflectionsTest < Test::Unit::TestCase
     assert_equal %w(hello), hash.keys
   end
 
-  def test_starts_ends_with
+  def test_starts_ends_with_alias
     s = "hello"
     assert s.starts_with?('h')
     assert s.starts_with?('hel')
     assert !s.starts_with?('el')
 
+    assert s.start_with?('h')
+    assert s.start_with?('hel')
+    assert !s.start_with?('el')
+
     assert s.ends_with?('o')
     assert s.ends_with?('lo')
     assert !s.ends_with?('el')
+
+    assert s.end_with?('o')
+    assert s.end_with?('lo')
+    assert !s.end_with?('el')
   end
 
-  # FIXME: Ruby 1.9
-  def test_each_char_with_utf8_string_when_kcode_is_utf8
-    old_kcode, $KCODE = $KCODE, 'UTF8'
-    '€2.99'.each_char do |char|
-      assert_not_equal 1, char.length
-      break
+  def test_string_squish
+    original = %{ A string with tabs(\t\t), newlines(\n\n), and
+                  many spaces(  ). }
+
+    expected = "A string with tabs( ), newlines( ), and many spaces( )."
+
+    # Make sure squish returns what we expect:
+    assert_equal original.squish,  expected
+    # But doesn't modify the original string:
+    assert_not_equal original, expected
+
+    # Make sure squish! returns what we expect:
+    assert_equal original.squish!, expected
+    # And changes the original string:
+    assert_equal original, expected
+  end
+
+  if RUBY_VERSION < '1.9'
+    def test_each_char_with_utf8_string_when_kcode_is_utf8
+      old_kcode, $KCODE = $KCODE, 'UTF8'
+      '€2.99'.each_char do |char|
+        assert_not_equal 1, char.length
+        break
+      end
+    ensure
+      $KCODE = old_kcode
     end
-  ensure
-    $KCODE = old_kcode
   end
 end

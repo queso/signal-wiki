@@ -15,11 +15,10 @@ module ActiveRecord
       # The third approach, count using options, accepts an option hash as the only parameter. The options are:
       #
       # * <tt>:conditions</tt>: An SQL fragment like "administrator = 1" or [ "user_name = ?", username ]. See conditions in the intro.
-      # * <tt>:joins</tt>: Either an SQL fragment for additional joins like "LEFT JOIN comments ON comments.post_id = id". (Rarely needed).
-      #    or names associations in the same form used for the :include option.
+      # * <tt>:joins</tt>: Either an SQL fragment for additional joins like "LEFT JOIN comments ON comments.post_id = id" (rarely needed)
+      #   or named associations in the same form used for the :include option, which will perform an INNER JOIN on the associated table(s).
       #   If the value is a string, then the records will be returned read-only since they will have attributes that do not correspond to the table's columns.
       #   Pass :readonly => false to override.
-      #   See adding joins for associations under Associations.
       # * <tt>:include</tt>: Named associations that should be loaded alongside using LEFT OUTER JOINs. The symbols named refer
       #   to already defined associations. When using named associations, count returns the number of DISTINCT items for the model you're counting.
       #   See eager loading under Associations.
@@ -72,7 +71,7 @@ module ActiveRecord
       #
       #   Person.sum('age')
       def sum(column_name, options = {})
-        calculate(:sum, column_name, options)
+        calculate(:sum, column_name, options) || 0
       end
 
       # This calculates aggregate values in the given column.  Methods for count, sum, average, minimum, and maximum have been added as shortcuts.
@@ -98,6 +97,7 @@ module ActiveRecord
       #
       # Options:
       # * <tt>:conditions</tt> - An SQL fragment like "administrator = 1" or [ "user_name = ?", username ]. See conditions in the intro.
+      # * <tt>:include</tt>: Eager loading, see Associations for details.  Since calculations don't load anything, the purpose of this is to access fields on joined tables in your conditions, order, or group clauses.
       # * <tt>:joins</tt> - An SQL fragment for additional joins like "LEFT JOIN comments ON comments.post_id = id". (Rarely needed).
       #   The records will be returned read-only since they will have attributes that do not correspond to the table's columns.
       # * <tt>:order</tt> - An SQL fragment like "created_at DESC, name" (really only used with GROUP BY calculations).
@@ -111,6 +111,7 @@ module ActiveRecord
       #   Person.average(:age) # SELECT AVG(age) FROM people...
       #   Person.minimum(:age, :conditions => ['last_name != ?', 'Drake']) # Selects the minimum age for everyone with a last name other than 'Drake'
       #   Person.minimum(:age, :having => 'min(age) > 17', :group => :last_name) # Selects the minimum age for any family without any minors
+      #   Person.sum("2 * age")
       def calculate(operation, column_name, options = {})
         validate_calculation_options(operation, options)
         column_name     = options[:select] if options[:select]
@@ -155,6 +156,7 @@ module ActiveRecord
           scope           = scope(:find)
           merged_includes = merge_includes(scope ? scope[:include] : [], options[:include])
           aggregate_alias = column_alias_for(operation, column_name)
+          column_name     = "#{connection.quote_table_name(table_name)}.#{column_name}" if column_names.include?(column_name.to_s)
 
           if operation == 'count'
             if merged_includes.any?
@@ -167,7 +169,10 @@ module ActiveRecord
             end
           end
 
-          sql = "SELECT #{operation}(#{'DISTINCT ' if options[:distinct]}#{column_name}) AS #{aggregate_alias}"
+          if options[:distinct] && column_name.to_s !~ /\s*DISTINCT\s+/i
+            distinct = 'DISTINCT ' 
+          end
+          sql = "SELECT #{operation}(#{distinct}#{column_name}) AS #{aggregate_alias}"
 
           # A (slower) workaround if we're using a backend, like sqlite, that doesn't support COUNT DISTINCT.
           sql = "SELECT COUNT(*) AS #{aggregate_alias}" if use_workaround
@@ -213,7 +218,7 @@ module ActiveRecord
           group_attr      = options[:group].to_s
           association     = reflect_on_association(group_attr.to_sym)
           associated      = association && association.macro == :belongs_to # only count belongs_to associations
-          group_field     = (associated ? "#{options[:group]}_id" : options[:group]).to_s
+          group_field     = associated ? association.primary_key_name : group_attr
           group_alias     = column_alias_for(group_field)
           group_column    = column_for group_field
           sql             = construct_calculation_sql(operation, column_name, options.merge(:group_field => group_field, :group_alias => group_alias))
@@ -230,7 +235,8 @@ module ActiveRecord
             key   = type_cast_calculated_value(row[group_alias], group_column)
             key   = key_records[key] if associated
             value = row[aggregate_alias]
-            all << [key, type_cast_calculated_value(value, column, operation)]
+            all[key] = type_cast_calculated_value(value, column, operation)
+            all
           end
         end
 

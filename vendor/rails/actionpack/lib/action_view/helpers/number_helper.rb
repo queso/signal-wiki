@@ -1,6 +1,6 @@
 module ActionView
   module Helpers #:nodoc:
-    # Provides methods for converting a numbers into formatted strings.
+    # Provides methods for converting numbers into formatted strings.
     # Methods are provided for phone numbers, currency, percentage,
     # precision, positional notation, and file size.
     module NumberHelper
@@ -21,7 +21,7 @@ module ActionView
       #  number_to_phone(1235551234, :area_code => true, :extension => 555) # => (123) 555-1234 x 555
       #  number_to_phone(1235551234, :country_code => 1)                    # => +1-123-555-1234
       #
-      #  number_to_phone(1235551234, :country_code => 1, :extension => 1343, :delimeter => ".")
+      #  number_to_phone(1235551234, :country_code => 1, :extension => 1343, :delimiter => ".")
       #  => +1.123.555.1234 x 1343      
       def number_to_phone(number, options = {})
         number       = number.to_s.strip unless number.nil?
@@ -54,6 +54,10 @@ module ActionView
       # * <tt>:unit</tt>  - Sets the denomination of the currency (defaults to "$").
       # * <tt>:separator</tt>  - Sets the separator between the units (defaults to ".").
       # * <tt>:delimiter</tt>  - Sets the thousands delimiter (defaults to ",").
+      # * <tt>:format</tt>  - Sets the format of the output string (defaults to "%u%n"). The field types are:
+      #
+      #     %u  The currency unit
+      #     %n  The number
       #
       # ==== Examples
       #  number_to_currency(1234567890.50)                    # => $1,234,567,890.50
@@ -62,16 +66,19 @@ module ActionView
       #
       #  number_to_currency(1234567890.50, :unit => "&pound;", :separator => ",", :delimiter => "")
       #  # => &pound;1234567890,50
+      #  number_to_currency(1234567890.50, :unit => "&pound;", :separator => ",", :delimiter => "", :format => "%n %u")
+      #  # => 1234567890,50 &pound;
       def number_to_currency(number, options = {})
         options   = options.stringify_keys
         precision = options["precision"] || 2
         unit      = options["unit"] || "$"
         separator = precision > 0 ? options["separator"] || "." : ""
         delimiter = options["delimiter"] || ","
+        format    = options["format"] || "%u%n"
 
         begin
           parts = number_with_precision(number, precision).split('.')
-          unit + number_with_delimiter(parts[0], delimiter) + separator + parts[1].to_s
+          format.gsub(/%n/, number_with_delimiter(parts[0], delimiter) + separator + parts[1].to_s).gsub(/%u/, unit)
         rescue
           number
         end
@@ -137,11 +144,11 @@ module ActionView
       #
       # ==== Examples
       #  number_with_precision(111.2345)     # => 111.235
-      #  number_with_precision(111.2345, 2)  # => 111.24
+      #  number_with_precision(111.2345, 2)  # => 111.23
       #  number_with_precision(13, 5)        # => 13.00000
       #  number_with_precision(389.32314, 0) # => 389
       def number_with_precision(number, precision=3)
-        "%01.#{precision}f" % number
+        "%01.#{precision}f" % ((Float(number) * (10 ** precision)).round.to_f / 10 ** precision)
       rescue
         number
       end
@@ -170,7 +177,7 @@ module ActionView
           when size < 1.gigabyte; "%.#{precision}f MB"  % (size / 1.0.megabyte)
           when size < 1.terabyte; "%.#{precision}f GB"  % (size / 1.0.gigabyte)
           else                    "%.#{precision}f TB"  % (size / 1.0.terabyte)
-        end.sub(/([0-9])\.?0+ /, '\1 ' )
+        end.sub(/([0-9]\.\d*?)0+ /, '\1 ' ).sub(/\. /,' ')
       rescue
         nil
       end

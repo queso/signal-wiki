@@ -1,4 +1,5 @@
-require File.dirname(__FILE__) + '/../abstract_unit'
+# encoding: utf-8
+require 'abstract_unit'
 
 class TestJSONEncoding < Test::Unit::TestCase
   class Foo
@@ -15,7 +16,7 @@ class TestJSONEncoding < Test::Unit::TestCase
 
   StringTests   = [[ 'this is the <string>',     %("this is the \\u003Cstring\\u003E")],
                    [ 'a "string" with quotes & an ampersand', %("a \\"string\\" with quotes \\u0026 an ampersand") ],
-                   [ 'http://test.host/posts/1', %("http:\\/\\/test.host\\/posts\\/1")]]
+                   [ 'http://test.host/posts/1', %("http://test.host/posts/1")]]
 
   ArrayTests    = [[ ['a', 'b', 'c'],          %([\"a\", \"b\", \"c\"])          ],
                    [ [1, 'a', :b, nil, false], %([1, \"a\", \"b\", null, false]) ]]
@@ -34,10 +35,22 @@ class TestJSONEncoding < Test::Unit::TestCase
   TimeTests     = [[ Time.utc(2005,2,1,15,15,10), %("2005/02/01 15:15:10 +0000") ]]
   DateTimeTests = [[ DateTime.civil(2005,2,1,15,15,10), %("2005/02/01 15:15:10 +0000") ]]
 
+  StandardDateTests     = [[ Date.new(2005,2,1), %("2005-02-01") ]]
+  StandardTimeTests     = [[ Time.utc(2005,2,1,15,15,10), %("2005-02-01T15:15:10Z") ]]
+  StandardDateTimeTests = [[ DateTime.civil(2005,2,1,15,15,10), %("2005-02-01T15:15:10+00:00") ]]
+  StandardStringTests   = [[ 'this is the <string>', %("this is the <string>")]]
+
   constants.grep(/Tests$/).each do |class_tests|
-    define_method("test_#{class_tests[0..-6].downcase}") do
-      self.class.const_get(class_tests).each do |pair|
-        assert_equal pair.last, pair.first.to_json
+    define_method("test_#{class_tests[0..-6].underscore}") do
+      begin
+        ActiveSupport.escape_html_entities_in_json  = class_tests !~ /^Standard/
+        ActiveSupport.use_standard_json_time_format = class_tests =~ /^Standard/
+        self.class.const_get(class_tests).each do |pair|
+          assert_equal pair.last, pair.first.to_json
+        end
+      ensure
+        ActiveSupport.escape_html_entities_in_json  = false
+        ActiveSupport.use_standard_json_time_format = false
       end
     end
   end
@@ -53,11 +66,10 @@ class TestJSONEncoding < Test::Unit::TestCase
   end
 
   def test_utf8_string_encoded_properly_when_kcode_is_utf8
-    old_kcode, $KCODE = $KCODE, 'UTF8'
-    assert_equal '"\\u20ac2.99"', '€2.99'.to_json
-    assert_equal '"\\u270e\\u263a"', '✎☺'.to_json
-  ensure
-    $KCODE = old_kcode
+    with_kcode 'UTF8' do
+      assert_equal '"\\u20ac2.99"', '€2.99'.to_json
+      assert_equal '"\\u270e\\u263a"', '✎☺'.to_json
+    end
   end
 
   def test_exception_raised_when_encoding_circular_reference
@@ -80,6 +92,19 @@ class TestJSONEncoding < Test::Unit::TestCase
   end
 
   protected
+    def with_kcode(code)
+      if RUBY_VERSION < '1.9'
+        begin
+          old_kcode, $KCODE = $KCODE, 'UTF8'
+          yield
+        ensure
+          $KCODE = old_kcode
+        end
+      else
+        yield
+      end
+    end
+
     def object_keys(json_object)
       json_object[1..-2].scan(/([^{}:,\s]+):/).flatten.sort
     end

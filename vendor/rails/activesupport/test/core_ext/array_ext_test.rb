@@ -1,7 +1,27 @@
-require File.dirname(__FILE__) + '/../abstract_unit'
+require 'abstract_unit'
 require 'bigdecimal'
 
+class ArrayExtAccessTests < Test::Unit::TestCase
+  def test_from
+    assert_equal %w( a b c d ), %w( a b c d ).from(0)
+    assert_equal %w( c d ), %w( a b c d ).from(2)
+    assert_nil %w( a b c d ).from(10)
+  end
+
+  def test_to
+    assert_equal %w( a ), %w( a b c d ).to(0)
+    assert_equal %w( a b c ), %w( a b c d ).to(2)
+    assert_equal %w( a b c d ), %w( a b c d ).to(10)
+  end
+end
+
 class ArrayExtToParamTests < Test::Unit::TestCase
+  class ToParam < String
+    def to_param
+      "#{self}1"
+    end
+  end
+  
   def test_string_array
     assert_equal '', %w().to_param
     assert_equal 'hello/world', %w(hello world).to_param
@@ -11,6 +31,10 @@ class ArrayExtToParamTests < Test::Unit::TestCase
   def test_number_array
     assert_equal '10/20', [10, 20].to_param
   end
+  
+  def test_to_param_array
+    assert_equal 'custom1/param1', [ToParam.new('custom'), ToParam.new('param')].to_param
+  end
 end
 
 class ArrayExtToSentenceTests < Test::Unit::TestCase
@@ -19,11 +43,14 @@ class ArrayExtToSentenceTests < Test::Unit::TestCase
     assert_equal "one", ['one'].to_sentence
     assert_equal "one and two", ['one', 'two'].to_sentence
     assert_equal "one, two, and three", ['one', 'two', 'three'].to_sentence
-
   end
 
   def test_to_sentence_with_connector
     assert_equal "one, two, and also three", ['one', 'two', 'three'].to_sentence(:connector => 'and also')
+    assert_equal "one, two, three", ['one', 'two', 'three'].to_sentence(:connector => '')
+    assert_equal "one, two, three", ['one', 'two', 'three'].to_sentence(:connector => nil)
+    assert_equal "one, two,  three", ['one', 'two', 'three'].to_sentence(:connector => ' ')
+    assert_equal "one, two, and  three", ['one', 'two', 'three'].to_sentence(:connector => 'and ')
   end
 
   def test_to_sentence_with_skip_last_comma
@@ -32,10 +59,15 @@ class ArrayExtToSentenceTests < Test::Unit::TestCase
 
   def test_two_elements
     assert_equal "one and two", ['one', 'two'].to_sentence
+    assert_equal "one two", ['one', 'two'].to_sentence(:connector => '')
   end
 
   def test_one_element
     assert_equal "one", ['one'].to_sentence
+  end
+
+  def test_one_non_string_element
+    assert_equal '1', [1].to_sentence
   end
 end
 

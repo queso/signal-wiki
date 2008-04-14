@@ -86,7 +86,7 @@ module ActionView
       # of +options+. See the valid options in the documentation for
       # url_for. It's also possible to pass a string instead
       # of an options hash to get a link tag that uses the value of the string as the
-      # href for the link, or use +:back+ to link to the referrer - a JavaScript back
+      # href for the link, or use <tt>:back</tt> to link to the referrer - a JavaScript back
       # link will be used in place of a referrer if none exists. If nil is passed as
       # a name, the link itself will become the name.
       #
@@ -251,10 +251,10 @@ module ActionView
       #     <li>About Us</li>
       #   </ul>
       #
-      # ...but if in the "home" action, it will render:
+      # ...but if in the "index" action, it will render:
       #
       #   <ul id="navbar">
-      #     <li><a href="/controller/index">Home</a></li>
+      #     <li>Home</li>
       #     <li><a href="/controller/about">About Us</a></li>
       #   </ul>
       #
@@ -331,7 +331,7 @@ module ActionView
       # also used as the name of the link unless +name+ is specified. Additional
       # HTML attributes for the link can be passed in +html_options+.
       #
-      # mail_to has several methods for hindering email harvestors and customizing
+      # mail_to has several methods for hindering email harvesters and customizing
       # the email itself by passing special keys to +html_options+.
       #
       # ==== Options
@@ -389,9 +389,8 @@ module ActionView
         email_address_obfuscated.gsub!(/\./, html_options.delete("replace_dot")) if html_options.has_key?("replace_dot")
 
         if encode == "javascript"
-          tmp = "document.write('#{content_tag("a", name || email_address, html_options.merge({ "href" => "mailto:"+email_address+extras }))}');"
-          for i in 0...tmp.length
-            string << sprintf("%%%x",tmp[i])
+          "document.write('#{content_tag("a", name || email_address, html_options.merge({ "href" => "mailto:"+email_address+extras }))}');".each_byte do |c|
+            string << sprintf("%%%x", c)
           end
           "<script type=\"#{Mime::JS}\">eval(unescape('#{string}'))</script>"
         elsif encode == "hex"
@@ -403,12 +402,9 @@ module ActionView
           protocol = 'mailto:'
           protocol.each_byte { |c| string << sprintf("&#%d;", c) }
 
-          for i in 0...email_address.length
-            if email_address[i,1] =~ /\w/
-              string << sprintf("%%%x",email_address[i])
-            else
-              string << email_address[i,1]
-            end
+          email_address.each_byte do |c|
+            char = c.chr
+            string << (char =~ /\w/ ? sprintf("%%%x", c) : char)
           end
           content_tag "a", name || email_address_encoded, html_options.merge({ "href" => "#{string}#{extras}" })
         else

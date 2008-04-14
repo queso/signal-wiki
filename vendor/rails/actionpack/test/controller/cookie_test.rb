@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../abstract_unit'
+require 'abstract_unit'
 
 class CookieTest < Test::Unit::TestCase
   class TestController < ActionController::Base
@@ -67,7 +67,7 @@ class CookieTest < Test::Unit::TestCase
   def test_setting_cookie_with_http_only
     get :authenticate_with_http_only
     assert_equal [ CGI::Cookie::new("name" => "user_name", "value" => "david", "http_only" => true) ], @response.headers["cookie"]
-    assert_equal CGI::Cookie::new("name" => "user_name", "value" => "david", "path" => "/", "http_only" => true).to_s, @response.headers["cookie"].to_s
+    assert_equal CGI::Cookie::new("name" => "user_name", "value" => "david", "path" => "/", "http_only" => true).to_s, @response.headers["cookie"][0].to_s
   end
 
   def test_multiple_cookies
@@ -131,5 +131,10 @@ class CookieTest < Test::Unit::TestCase
       'expires' => Time.utc(2007, 10, 20))
     assert cookie_str !~ /secure/
     assert cookie_str !~ /HttpOnly/
+  end
+
+  def test_cookies_should_not_be_split_on_ampersand_values
+    cookies = CGI::Cookie.parse('return_to=http://rubyonrails.org/search?term=api&scope=all&global=true')
+    assert_equal({"return_to" => ["http://rubyonrails.org/search?term=api&scope=all&global=true"]}, cookies)
   end
 end

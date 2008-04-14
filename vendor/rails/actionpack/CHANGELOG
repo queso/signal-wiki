@@ -1,5 +1,237 @@
 *SVN*
 
+* Automatically parse posted JSON content for Mime::JSON requests.  [rick]
+
+  POST /posts
+  {"post": {"title": "Breaking News"}}
+
+  def create
+    @post = Post.create params[:post]
+    # ...
+  end
+
+* add json_escape ERB util to escape html entities in json strings that are output in HTML pages. [rick]
+
+* Provide a helper proxy to access helper methods from outside views. Closes #10839 [Josh Peek]
+  e.g. ApplicationController.helpers.simple_format(text)
+
+* Improve documentation. [Xavier Noria, leethal, jerome]
+
+* Ensure RJS redirect_to doesn't html-escapes string argument. Closes #8546 [josh, eventualbuddha, Pratik]
+
+* Support render :partial => collection of heterogeneous elements.  #11491 [Zach Dennis]
+
+* Avoid remote_ip spoofing.  [Brian Candler]
+
+* Added support for regexp flags like ignoring case in the :requirements part of routes declarations #11421 [NeilW]
+
+* Fixed that ActionController::Base#read_multipart would fail if boundary was exactly 10240 bytes #10886 [ariejan]
+
+* Fixed HTML::Tokenizer (used in sanitize helper) didn't handle unclosed CDATA tags #10071 [esad, packagethief]
+
+* Improve documentation. [Radar, Jan De Poorter, chuyeow, xaviershay, danger, miloops, Xavier Noria,  Sunny Ripert]
+
+* Fixed that FormHelper#radio_button would produce invalid ids #11298 [harlancrystal]
+
+* Added :confirm option to submit_tag #11415 [miloops]
+
+* Fixed NumberHelper#number_with_precision to properly round in a way that works equally on Mac, Windows, Linux (closes #11409, #8275, #10090, #8027) [zhangyuanyi]
+
+* Allow the #simple_format text_helper to take an html_options hash for each paragraph.  #2448 [Francois Beausoleil, thechrisoshow]
+
+* Fix regression from filter refactoring where re-adding a skipped filter resulted in it being called twice.  [rick]
+
+* Refactor filters to use Active Support callbacks.  #11235 [Josh Peek]
+
+* Fixed that polymorphic routes would modify the input array #11363 [thomas.lee]
+
+* Added :format option to NumberHelper#number_to_currency to enable better localization support #11149 [lylo]
+
+* Fixed that TextHelper#excerpt would include one character too many #11268 [Irfy]
+
+* Fix more obscure nested parameter hash parsing bug.  #10797 [thomas.lee]
+
+* Added ActionView::Helpers::register_javascript/stylesheet_expansion to make it easier for plugin developers to inject multiple assets.  #10350 [lotswholetime]
+
+* Fix nested parameter hash parsing bug.  #10797 [thomas.lee]
+
+* Allow using named routes in ActionController::TestCase before any request has been made. Closes #11273 [alloy]
+
+* Fixed that sweepers defined by cache_sweeper will be added regardless of the perform_caching setting. Instead, control whether the sweeper should be run with the perform_caching setting. This makes testing easier when you want to turn perform_caching on/off [DHH]
+
+* Make MimeResponds::Responder#any work without explicit types. Closes #11140 [jaw6]
+
+* Better error message for type conflicts when parsing params.  Closes #7962 [spicycode, matt]
+
+* Remove unused ActionController::Base.template_class. Closes #10787 [Pratik]
+
+* Moved template handlers related code from ActionView::Base to ActionView::Template. [Pratik]
+
+* Tests for div_for and content_tag_for helpers. Closes #11223 [thechrisoshow]
+
+* Allow file uploads in Integration Tests.  Closes #11091 [RubyRedRick]
+
+* Refactor partial rendering into a PartialTemplate class. [Pratik]
+
+* Added that requests with JavaScript as the priority mime type in the accept header and no format extension in the parameters will be treated as though their format was :js when it comes to determining which template to render. This makes it possible for JS requests to automatically render action.js.rjs files without an explicit respond_to block  [DHH]
+
+* Tests for distance_of_time_in_words with TimeWithZone instances. Closes #10914 [ernesto.jimenez]
+
+* Remove support for multivalued (e.g., '&'-delimited) cookies. [Jamis Buck]
+
+* Fix problem with render :partial collections, records, and locals. #11057 [lotswholetime] 
+
+* Added support for naming concrete classes in sweeper declarations [DHH]
+
+* Remove ERB trim variables from trace template in case ActionView::Base.erb_trim_mode is changed in the application.  #10098 [tpope, kampers]
+
+* Fix typo in form_helper documentation.  #10650 [xaviershay, kampers]
+
+* Fix bug with setting Request#format= after the getter has cached the value.  #10889 [cch1]
+
+* Correct inconsistencies in RequestForgeryProtection docs.  #11032 [mislav]
+
+* Introduce a Template class to ActionView.  #11024 [lifofifo]
+
+* Introduce the :index option for form_for and fields_for to simplify multi-model forms (see http://railscasts.com/episodes/75).  #9883 [rmm5t]
+
+* Introduce map.resources :cards, :as => 'tarjetas' to use a custom resource name in the URL: cards_path == '/tarjetas'.  #10578 [blj]
+
+* TestSession supports indifferent access.  #7372 [tamc, Arsen7, mhackett, julik, jean.helou]
+
+* Make assert_routing aware of the HTTP method used.  #8039 [mpalmer]
+  e.g. assert_routing({ :method => 'put', :path => '/product/321' }, { :controller => "product", :action => "update", :id => "321" })
+
+* Make map.root accept a single symbol as an argument to declare an alias.  #10818 [bscofield] 
+
+  e.g.  map.dashboard '/dashboard', :controller=>'dashboard'
+        map.root      :dashboard
+
+* Handle corner case with image_tag when passed 'messed up' image names. #9018 [duncanbeevers, mpalmer]
+
+* Add label_tag helper for generating elements. #10802 [DefV]
+
+* Introduce TemplateFinder to handle view paths and lookups.  #10800 [Pratik Naik] 
+
+* Performance: optimize route recognition. Large speedup for apps with many resource routes.  #10835 [oleganza]
+
+* Make render :partial recognise form builders and use the _form partial.  #10814 [djanowski]
+
+* Allow users to declare other namespaces when using the atom feed helpers. #10304 [david.calavera]
+
+* Introduce send_file :x_sendfile => true to send an X-Sendfile response header.  [Jeremy Kemper]
+
+* Fixed ActionView::Helpers::ActiveRecordHelper::form for when protect_from_forgery is used #10739 [jeremyevans]
+
+* Provide nicer access to HTTP Headers.  Instead of request.env["HTTP_REFERRER"] you can now use request.headers["Referrer"]. [Koz]
+
+* UrlWriter respects relative_url_root.  #10748 [Cheah Chu Yeow]
+
+* The asset_host block takes the controller request as an optional second argument. Example: use a single asset host for SSL requests.  #10549 [Cheah Chu Yeow, Peter B, Tom Taylor]
+
+* Support render :text => nil.  #6684 [tjennings, PotatoSalad, Cheah Chu Yeow]
+
+* assert_response failures include the exception message.  #10688 [Seth Rasmussen]
+
+* All fragment cache keys are now by default prefixed with the "views/" namespace [DHH]
+
+* Moved the caching stores from ActionController::Caching::Fragments::* to ActiveSupport::Cache::*. If you're explicitly referring to a store, like ActionController::Caching::Fragments::MemoryStore, you need to update that reference with ActiveSupport::Cache::MemoryStore [DHH]
+
+* Deprecated ActionController::Base.fragment_cache_store for ActionController::Base.cache_store [DHH]
+
+* Made fragment caching in views work for rjs and builder as well #6642 [zsombor]
+
+* Fixed rendering of partials with layout when done from site layout #9209 [antramm]
+
+* Fix atom_feed_helper to comply with the atom spec.  Closes #10672 [xaviershay]
+
+  * The tags created do not contain a date (http://feedvalidator.org/docs/error/InvalidTAG.html)
+  * IDs are not guaranteed unique
+  * A default self link was not provided, contrary to the documentation
+  * NOTE:  This changes tags for existing atom entries, but at least they validate now.
+
+* Correct indentation in tests.  Closes #10671 [l.guidi]
+
+* Fix that auto_link looks for ='s in url paths (Amazon urls have them).  Closes #10640 [bgreenlee]
+
+* Ensure that test case setup is run even if overridden.  #10382 [Josh Peek]
+
+* Fix HTML Sanitizer to allow trailing spaces in CSS style attributes.  Closes #10566 [wesley.moxam]
+
+* Add :default option to time_zone_select.  #10590 [Matt Aimonetti]
+
+
+*2.0.2* (December 16th, 2007)
+
+* Added delete_via_redirect and put_via_redirect to integration testing #10497 [philodespotos]
+
+* Allow headers['Accept'] to be set by hand when calling xml_http_request #10461 [BMorearty]
+
+* Added OPTIONS to list of default accepted HTTP methods #10449 [holoway]
+
+* Added option to pass proc to ActionController::Base.asset_host for maximum configurability #10521 [chuyeow]. Example:
+
+    ActionController::Base.asset_host = Proc.new { |source|
+      if source.starts_with?('/images')
+        "http://images.example.com"
+      else
+        "http://assets.example.com"
+      end
+    }
+
+* Fixed that ActionView#file_exists? would be incorrect if @first_render is set #10569 [dbussink]
+
+* Added that Array#to_param calls to_param on all it's elements #10473 [brandon]
+
+* Ensure asset cache directories are automatically created.  #10337 [Josh Peek, Cheah Chu Yeow]
+
+* render :xml and :json preserve custom content types.  #10388 [jmettraux, Cheah Chu Yeow]
+
+* Refactor Action View template handlers.  #10437, #10455 [Josh Peek]
+
+* Fix DoubleRenderError message and leave out mention of returning false from filters.  Closes #10380 [Frederick Cheung]
+
+* Clean up some cruft around ActionController::Base#head.  Closes #10417 [ssoroka]
+
+
+*2.0.1* (December 7th, 2007)
+
+* Fixed send_file/binary_content for testing #8044 [tolsen]
+
+* When a NonInferrableControllerError is raised, make the proposed fix clearer in the error message. Closes #10199 [danger]
+
+* Update Prototype to 1.6.0.1.  [sam]
+
+* Update script.aculo.us to 1.8.0.1.  [madrobby]
+
+* Add 'disabled' attribute to <OPTION> separators used in time zone and country selects.  Closes #10354 [hasmanyjosh]
+
+* Added the same record identification guessing rules to fields_for as form_for has [DHH]
+
+* Fixed that verification violations with no specified action didn't halt the chain (now they do with a 400 Bad Request) [DHH]
+
+* Raise UnknownHttpMethod exception for unknown HTTP methods. Closes #10303 [Tarmo Tänav]
+
+* Update to Prototype -r8232.  [sam]
+
+* Make sure the optimisation code for routes doesn't get used if :host, :anchor or :port are provided in the hash arguments. [pager, Koz] #10292
+
+* Added protection from trailing slashes on page caching #10229 [devrieda]
+
+* Asset timestamps are appended, not prepended. Closes #10276 [mnaberez]
+
+* Minor inconsistency in description of render example. Closes #10029 [ScottSchram]
+
+* Add #prepend_view_path and #append_view_path instance methods on ActionController::Base for consistency with the class methods.  [rick]
+
+* Refactor sanitizer helpers into HTML classes and make it easy to swap them out with custom implementations.  Closes #10129.  [rick]
+
+* Add deprecation for old subtemplate syntax for ActionMailer templates, use render :partial [rick]
+
+* Fix TemplateError so it doesn't bomb on exceptions while running tests [rick]
+
+* Fixed that named routes living under resources shouldn't have double slashes #10198 [isaacfeliu]
+
 * Make sure that cookie sessions use a secret that is at least 30 chars in length. [Koz]
 
 * Fixed that partial rendering should look at the type of the first render to determine its own type if no other clues are available (like when using text.plain.erb as the extension in AM) #10130 [java]
@@ -70,7 +302,7 @@
 
 * Make sure resource routes don't clash with internal helpers like javascript_path, image_path etc.  #9928 [gbuesing]
 
-* caches_page uses a single after_filter instead of one per action.  #9891 [lifofifo]
+* caches_page uses a single after_filter instead of one per action.  #9891 [Pratik Naik]
 
 * Update Prototype to 1.6.0_rc1 and script.aculo.us to 1.8.0 preview 0.  [sam, madrobby]
 
@@ -86,11 +318,11 @@
 
 * Extracted sanitization methods from TextHelper to SanitizeHelper [DHH]
 
-* rescue_from accepts :with => lambda { |exception| ... } or a normal block.  #9827 [lifofifo]
+* rescue_from accepts :with => lambda { |exception| ... } or a normal block.  #9827 [Pratik Naik]
 
 * Add :status to redirect_to allowing users to choose their own response code without manually setting headers. #8297 [codahale, chasgrundy]
 
-* Add link_to :back which uses your referrer with a fallback to a javascript link. #7366 [eventualbuddha, tarmo]
+* Add link_to :back which uses your referrer with a fallback to a javascript link. #7366 [eventualbuddha, Tarmo Tänav]
 
 * error_messages_for and friends also work with local variables.  #9699 [Frederick Cheung]
 
@@ -106,13 +338,14 @@
 
 * Only accept session ids from cookies, prevents session fixation attacks.  [bradediger] 
 
+
 *2.0.0 [Preview Release]* (September 29th, 2007) [Includes duplicates of changes from 1.12.2 - 1.13.3]
 
 * Fixed that render template did not honor exempt_from_layout #9698 [pezra]
 
 * Better error messages if you leave out the :secret option for request forgery protection.  Closes #9670 [rick]
 
-* Allow ability to disable request forgery protection, disable it in test mode by default.  Closes #9693 [lifofifo]
+* Allow ability to disable request forgery protection, disable it in test mode by default.  Closes #9693 [Pratik Naik]
 
 * Avoid calling is_missing on LoadErrors. Closes #7460. [ntalbott]
 
@@ -124,13 +357,13 @@
 
 * Optimized named routes respect AbstractRequest.relative_url_root.  #9612 [danielmorrison, Jeremy Kemper]
 
-* Introduce ActionController::Base.rescue_from to declare exception-handling methods. Cleaner style than the case-heavy rescue_action_in_public.  #9449 [norbert]
+* Introduce ActionController::Base.rescue_from to declare exception-handling methods. Cleaner style than the case-heavy rescue_action_in_public.  #9449 [Norbert Crombach]
 
 * Rename some RequestForgeryProtection methods.  The class method is now #protect_from_forgery, and the default parameter is now 'authenticity_token'.  [Rick]
 
 * Merge csrf_killer plugin into rails.  Adds RequestForgeryProtection model that verifies session-specific _tokens for non-GET requests.  [Rick]
 
-* Secure #sanitize, #strip_tags, and #strip_links helpers against xss attacks.  Closes #8877. [Rick, lifofifo, Jacques Distler]
+* Secure #sanitize, #strip_tags, and #strip_links helpers against xss attacks.  Closes #8877. [Rick, Pratik Naik, Jacques Distler]
 
   This merges and renames the popular white_list helper (along with some css sanitizing from Jacques Distler version of the same plugin).
   Also applied updated versions of #strip_tags and #strip_links from #8877.
@@ -149,7 +382,7 @@
 
 * Prevent errors when generating routes for uncountable resources, (i.e. sheep where plural == singluar).   map.resources :sheep now creates sheep_index_url for the collection and sheep_url for the specific item.  [Koz]
 
-* Added support for HTTP Only cookies (works in IE6+ and FF 2.0.5+) as an improvement for XSS attacks #8895 [lifo/Spakman]
+* Added support for HTTP Only cookies (works in IE6+ and FF 2.0.5+) as an improvement for XSS attacks #8895 [Pratik Naik, Spakman]
 
 * Don't warn when a path segment precedes a required segment. Closes #9615. [Nicholas Seckar]
 
@@ -180,15 +413,15 @@
 
 * Added that render :json will automatically call .to_json unless it's being passed a string [DHH].
 
-* Autolink behaves well with emails embedded in URLs.  #7313 [Jeremy McAnally, tarmo]
+* Autolink behaves well with emails embedded in URLs.  #7313 [Jeremy McAnally, Tarmo Tänav]
 
-* Fixed that default layouts did not take the format into account #9564 [lifofifo]
+* Fixed that default layouts did not take the format into account #9564 [Pratik Naik]
 
 * Fixed optimized route segment escaping.  #9562 [wildchild, Jeremy Kemper]
 
 * Added block acceptance to JavaScriptHelper#javascript_tag.  #7527 [Bob Silva, Tarmo Tänav, rmm5t]
 
-* root_path returns '/' not ''.  #9563 [lifofifo]
+* root_path returns '/' not ''.  #9563 [Pratik Naik]
 
 * Fixed that setting request.format should also affect respond_to blocks [DHH]
 
@@ -196,9 +429,9 @@
 
 * Fixed that resource namespaces wouldn't stick to all nested resources #9399 [pixeltrix]
 
-* Moved ActionController::Macros::AutoComplete into the auto_complete plugin on the official Rails svn #9512 [lifofifo]
+* Moved ActionController::Macros::AutoComplete into the auto_complete plugin on the official Rails svn.  #9512 [Pratik Naik]
 
-* Moved ActionController::Macros::InPlaceEditing into the in_place_editor plugin on the official Rails svn #9513 [lifofifo]
+* Moved ActionController::Macros::InPlaceEditing into the in_place_editor plugin on the official Rails svn.  #9513 [Pratik Naik]
 
 * Removed deprecated form of calling xml_http_request/xhr without the first argument being the http verb [DHH]
 
@@ -228,7 +461,7 @@
 
 * Allow additional parameters to be passed to named route helpers when using positional arguments.  Closes #8930 [ian.w.white@gmail.com]
 
-* Make render :partial work with a :collection of Hashes, previously this wasn't possible due to backwards compatibility restrictions.  [lifofifo]
+* Make render :partial work with a :collection of Hashes, previously this wasn't possible due to backwards compatibility restrictions.  [Pratik Naik]
 
 * request.host works with IPv6 addresses.  #9458 [yuya]
 
@@ -258,9 +491,9 @@
   this behaviour are advised to put the code in question after a yield statement in an around filter.
   
 
-* Allow you to delete cookies with options. Closes #3685 [josh, Chris Wanstrath]
+* Allow you to delete cookies with options. Closes #3685 [Josh Peek, Chris Wanstrath]
 
-* Allow you to render views with periods in the name.  Closes #8076 [norbert]
+* Allow you to render views with periods in the name.  Closes #8076 [Norbert Crombach]
 
   render :partial => 'show.html.erb'
 
@@ -274,13 +507,13 @@
 
 * Give the legacy X-POST_DATA_FORMAT header greater precedence during params parsing for backward compatibility.  [Jeremy Kemper]
 
-* Fixed that link_to with an href of # when using :method will not allow for click-through without JavaScript #7037 [stevenbristol/josh]
+* Fixed that link_to with an href of # when using :method will not allow for click-through without JavaScript #7037 [Steven Bristol, Josh Peek]
 
-* Fixed that radio_button_tag should generate unique ids #3353 [BobSilva/rebecca/josh]
+* Fixed that radio_button_tag should generate unique ids #3353 [Bob Silva, Rebecca, Josh Peek]
 
 * Fixed that HTTP authentication should work if the header is called REDIRECT_X_HTTP_AUTHORIZATION as well #6754 [mislaw]
 
-* Don't mistakenly interpret the request uri as the query string.  #8731 [lifofifo, Jeremy Kemper]
+* Don't mistakenly interpret the request uri as the query string.  #8731 [Pratik Naik, Jeremy Kemper]
 
 * Make ActionView#view_paths an attr_accessor for real this time.  Also, don't perform an unnecessary #compact on the @view_paths array in #initialize.  Closes #8582 [dasil003, julik, rick]
 
@@ -308,7 +541,7 @@
 
 * Routing: map.resource :logo routes to LogosController so the controller may be reused for multiple nestings or namespaces.  [Jeremy Kemper]
 
-* render :partial recognizes Active Record associations as Arrays.  #8538 [kamal]
+* render :partial recognizes Active Record associations as Arrays.  #8538 [Kamal Fariz Mahyuddin]
 
 * Routing: drop semicolon and comma as route separators.  [Jeremy Kemper]
 
@@ -328,7 +561,7 @@
 
 * Wordsmith resources documentation.  #8484 [marclove]
 
-* Fix syntax error in code example for routing documentation. #8377. [norbert]
+* Fix syntax error in code example for routing documentation. #8377. [Norbert Crombach]
 
 * Routing: respond with 405 Method Not Allowed status when the route path matches but the HTTP method does not.  #6953 [Josh Peek, defeated, Dan Kubb, Coda Hale]
 
@@ -340,7 +573,7 @@
 
 * auto_complete_field takes a :method option so you can GET or POST.  #8120 [zapnap]
 
-* Added option to suppress :size when using :maxlength for FormTagHelper#text_field #3112 [rails@tpope.info]
+* Added option to suppress :size when using :maxlength for FormTagHelper#text_field #3112 [Tim Pope]
 
 * catch possible WSOD when trying to render a missing partial. Closes #8454 [Catfish]
 
@@ -444,7 +677,7 @@
 
 * Enhance documentation and add examples for url_for. [jeremymcanally]
 
-* Fix documentation typo in routes. [norbert, pam]
+* Fix documentation typo in routes. [Norbert Crombach, pam]
 
 * Sweep flash when filter chain is halted. [Caio Chassot <lists@v2studio.com>]
 
@@ -530,7 +763,7 @@
 
 * Ensure that render_text only adds string content to the body of the response [DHH]
 
-* Return the string representation from an Xml Builder when rendering a partial. Closes #5044 [tpope] 
+* Return the string representation from an Xml Builder when rendering a partial. Closes #5044 [Tim Pope]
 
 * Fixed that parameters from XML should also be presented in a hash with indifferent access [DHH]
 
@@ -891,7 +1124,7 @@ superclass' view_paths.  [Rick]
 
 * Deprecate JavaScriptHelper#update_element_function, which is superseeded by RJS [Thomas Fuchs]
 
-* pluralize helper interprets nil as zero.  #6474 [pope]
+* pluralize helper interprets nil as zero.  #6474 [Tim Pope]
 
 * Fix invalid test fixture exposed by stricter Ruby 1.8.5 multipart parsing.  #6524 [Bob Silva]
 
@@ -3769,7 +4002,7 @@ Default YAML web services were retired, ActionController::Base.param_parsers car
 
 * Fixed that cached template loading would still check the file system to see if the file existed #258 [Andreas Schwarz]
 
-* Added options to tailor header tag, div id, and div class on ActiveRecordHelper#error_messages_for [josh]
+* Added options to tailor header tag, div id, and div class on ActiveRecordHelper#error_messages_for [Josh Peek]
 
 * Added graceful handling of non-alphanumeric names and misplaced brackets in input parameters [Jeremy Kemper]
 
