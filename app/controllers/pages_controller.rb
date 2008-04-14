@@ -21,9 +21,9 @@ class PagesController < ApplicationController
   # GET /pages/1.xml
   def show
     @page = site.pages.find_by_permalink(params[:id] || "home")
-    @version = @page.versions.find_by_version(@page.version)
     
     if @page
+      @version = @page.versions.find_by_version(@page.version)
       respond_to do |format|
         format.html # show.html.erb
         format.xml  { render :xml => @page }

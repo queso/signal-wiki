@@ -4,6 +4,7 @@ module PagesHelper
     r = RedCloth.new(body)
     r.gsub!(/\[\[(.*?)(\|(.*?))?\]\]/) { wiki_link($1, $3) }
     sanitize r.to_html
+    r.to_html
   end
   
   def wiki_link(wiki_words, link_text = nil)

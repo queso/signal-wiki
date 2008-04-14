@@ -58,19 +58,11 @@ class Page < ActiveRecord::Base
       self.permalink = Page.count == 0 ? "home" : "#{title.downcase.strip.gsub(/ |\.|@/, '-')}" 
     end
   end
-  
-  def next_version
-    self.versions.size > self.version ? self.version + 1 : false
-  end
-  
-  def previous_version
-    self.version > 1 ? self.version - 1 : false
-  end  
-  
+    
   def set_links
     Link.transaction do
       # outbound_links.delete_all
-      body.scan(/\[\[(.*?)\]\]/).each do |link|
+      body.scan(/\[\[([^\]]*)\]\]/).each do |link|
         link = link[0].downcase.gsub(' ', '-')
         if page = site.pages.find_by_permalink(link)
           Link.create! :from_page_id => id, :to_page_id => page.id
