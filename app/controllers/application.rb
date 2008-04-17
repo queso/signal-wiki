@@ -16,7 +16,7 @@ class ApplicationController < ActionController::Base
   end
   
   def require_admin
-    redirect_to(page_path('home')) unless logged_in? && current_user.admin?
+    redirect_to(page_path('home')) unless admin?
   end
   
 end
