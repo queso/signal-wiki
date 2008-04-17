@@ -15,4 +15,8 @@ class ApplicationController < ActionController::Base
     @site ||= Site.find(:first)
   end
   
+  def require_admin
+    redirect_to(page_path('home')) unless logged_in? && current_user.admin?
+  end
+  
 end

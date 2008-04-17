@@ -2,8 +2,8 @@ module PagesHelper
   
   def wikified_body(body)
     r = RedCloth.new(body)
-    r.gsub!(/\[\[(.*)(\|(.*))?\]\]/) {wiki_link(*$1.split("|")[0..1])}
-    r.to_html
+    r.gsub!(/\[\[(.*?)(\|(.*?))?\]\]/) { wiki_link($1, $3) }
+    sanitize r.to_html
   end
   
   def wiki_link(wiki_words, link_text = nil)
@@ -20,10 +20,14 @@ module PagesHelper
   end
   
   def body_input(f)
+    text_input(f, 'body')
+  end
+  
+  def text_input(f, attr)
     if site.disable_teh
-      f.text_area :body
+      f.text_area attr.to_sym
     else
-      textile_editor 'page', 'body'
+      textile_editor 'page', attr
     end
   end
   

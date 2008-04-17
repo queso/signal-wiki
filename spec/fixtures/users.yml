@@ -1,0 +1,11 @@
+jeremy:
+  id: 1
+  login: jeremy
+  email: hai@ohai.com
+  admin: 0
+
+admin:
+  id: 2
+  login: admin
+  email: hai@ohai.com
+  admin: 1

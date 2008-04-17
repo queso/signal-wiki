@@ -1,0 +1,9 @@
+one_old:
+  id: 1
+  title: hai
+  permalink: hai
+  body: there, i fixed ur ram
+  site_id: 1
+  version: 1
+  created_at: <%= 1.day.ago.to_s :db %>
+  page_id: <%= Fixtures.identify :one %>

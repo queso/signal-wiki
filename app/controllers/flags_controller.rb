@@ -5,7 +5,7 @@ class FlagsController < ApplicationController
   before_filter :admin_required, :only => :index
 protected
   def admin_required
-    raise AccessDenied unless current_user.admin?
+    redirect_to new_session_path unless current_user.admin?
   end
 
 public
@@ -13,7 +13,7 @@ public
   # collection methods
 
   def create
-    flag = current_user.flags.create! params[:flag]
+    flag = current_user.flags.create!(params[:flag])
     flash[:notice] = if flag.new_record?
       "You already flagged this content!"
     else # success
