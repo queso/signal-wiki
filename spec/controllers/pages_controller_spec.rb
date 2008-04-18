@@ -24,7 +24,7 @@ describe PagesController, " with site that requires login, a user not logged in"
 
     get :revision, :id => page.permalink, :version => page.version - 1
     response.should be_success
-    response.should render_template("revision")    
+    response.should render_template("show")    
   end
   
   it "searches for pages" do
@@ -139,7 +139,7 @@ describe PagesController, "a user logged in as normal user" do
 
     get :revision, :id => page.permalink, :version => page.version - 1
     response.should be_success
-    response.should render_template("revision")   
+    response.should render_template("show")   
   end
   
   it "searches for pages" do
