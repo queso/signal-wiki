@@ -205,7 +205,7 @@ describe PagesController, "a user logged in as admin" do
 
     get :revision, :id => page.permalink, :version => page.version - 1
     response.should be_success
-    response.should render_template("revision")   
+    response.should render_template("show")   
   end
   
   it "searches for pages" do
