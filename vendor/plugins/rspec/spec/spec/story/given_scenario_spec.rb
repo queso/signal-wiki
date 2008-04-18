@@ -8,7 +8,7 @@ module Spec
         class MyWorld
           attr :scenario_ran
         end
-        instance = MyWorld.new
+        instance = World.create(MyWorld)
         scenario = ScenarioBuilder.new.to_scenario do
           @scenario_ran = true
         end
@@ -17,10 +17,10 @@ module Spec
         step = GivenScenario.new 'scenario name'
         
         # when
-        step.perform(instance)
+        step.perform(instance, nil)
         
         # then
-        ensure_that instance.scenario_ran, is(true)
+        instance.scenario_ran.should be_true
       end
     end
   end

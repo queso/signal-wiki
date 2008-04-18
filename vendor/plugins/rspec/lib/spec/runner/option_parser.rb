@@ -14,23 +14,12 @@ module Spec
 
       attr_reader :options
 
-      BUILT_IN_FORMATTERS = {
-        'specdoc'  => Formatter::SpecdocFormatter,
-        's'        => Formatter::SpecdocFormatter,
-        'html'     => Formatter::HtmlFormatter,
-        'h'        => Formatter::HtmlFormatter,
-        'rdoc'     => Formatter::RdocFormatter,
-        'r'        => Formatter::RdocFormatter,
-        'progress' => Formatter::ProgressBarFormatter,
-        'p'        => Formatter::ProgressBarFormatter,
-        'failing_examples' => Formatter::FailingExamplesFormatter,
-        'e'        => Formatter::FailingExamplesFormatter,
-        'failing_behaviours' => Formatter::FailingBehavioursFormatter,
-        'b'        => Formatter::FailingBehavioursFormatter
-      }
-
       OPTIONS = {
-        :diff =>    ["-D", "--diff [FORMAT]", "Show diff of objects that are expected to be equal when they are not",
+        :pattern => ["-p", "--pattern [PATTERN]","Limit files loaded to those matching this pattern. Defaults to '**/*_spec.rb'",
+                                                 "Separate multiple patterns with commas.",
+                                                 "Applies only to directories named on the command line (files",
+                                                 "named explicitly on the command line will be loaded regardless)."],
+        :diff =>    ["-D", "--diff [FORMAT]","Show diff of objects that are expected to be equal when they are not",
                                              "Builtin formats: unified|u|context|c",
                                              "You can also specify a custom differ class",
                                              "(in which case you should also specify --require)"],
@@ -47,30 +36,34 @@ module Spec
         :specification => ["-s", "--specification [NAME]", "DEPRECATED - use -e instead", "(This will be removed when autotest works with -e)"],
         :line => ["-l", "--line LINE_NUMBER", Integer, "Execute behaviout or specification at given line.",
                                                        "(does not work for dynamically generated specs)"],
-        :format => ["-f", "--format FORMAT[:WHERE]",  "Specifies what format to use for output. Specify WHERE to tell",
+        :format => ["-f", "--format FORMAT[:WHERE]","Specifies what format to use for output. Specify WHERE to tell",
                                                     "the formatter where to write the output. All built-in formats",
                                                     "expect WHERE to be a file name, and will write to STDOUT if it's",
                                                     "not specified. The --format option may be specified several times",
                                                     "if you want several outputs",
                                                     " ",
-                                                    "Builtin formats: ",
-                                                    "progress|p           : Text progress",
-                                                    "specdoc|s            : Example doc as text",
-                                                    "rdoc|r               : Example doc as RDoc",
+                                                    "Builtin formats for examples: ",
+                                                    "progress|p               : Text progress",
+                                                    "profile|o                : Text progress with profiling of 10 slowest examples",
+                                                    "specdoc|s                : Example doc as text",
+                                                    "html|h                   : A nice HTML report",
+                                                    "failing_examples|e       : Write all failing examples - input for --example",
+                                                    "failing_example_groups|g : Write all failing example groups - input for --example",
+                                                    " ",
+                                                    "Builtin formats for stories: ",
+                                                    "plain|p              : Plain Text",
                                                     "html|h               : A nice HTML report",
-                                                    "failing_examples|e   : Write all failing examples - input for --example",
-                                                    "failing_behaviours|b : Write all failing behaviours - input for --example",
                                                     " ",
                                                     "FORMAT can also be the name of a custom formatter class",
                                                     "(in which case you should also specify --require to load it)"],
         :require => ["-r", "--require FILE", "Require FILE before running specs",
-                                          "Useful for loading custom formatters or other extensions.",
-                                          "If this option is used it must come before the others"],
+                                             "Useful for loading custom formatters or other extensions.",
+                                             "If this option is used it must come before the others"],
         :backtrace => ["-b", "--backtrace", "Output full backtrace"],
         :loadby => ["-L", "--loadby STRATEGY", "Specify the strategy by which spec files should be loaded.",
-                                              "STRATEGY can currently only be 'mtime' (File modification time)",
-                                              "By default, spec files are loaded in alphabetical order if --loadby",
-                                              "is not specified."],
+                                               "STRATEGY can currently only be 'mtime' (File modification time)",
+                                               "By default, spec files are loaded in alphabetical order if --loadby",
+                                               "is not specified."],
         :reverse => ["-R", "--reverse", "Run examples in reverse order"],
         :timeout => ["-t", "--timeout FLOAT", "Interrupt and fail each example that doesn't complete in the",
                                               "specified time"],
@@ -83,7 +76,7 @@ module Spec
         :dry_run => ["-d", "--dry-run", "Invokes formatters without executing the examples."],
         :options_file => ["-O", "--options PATH", "Read options from a file"],
         :generate_options => ["-G", "--generate-options PATH", "Generate an options file for --options"],
-        :runner => ["-U", "--runner RUNNER", "Use a custom BehaviourRunner."],
+        :runner => ["-U", "--runner RUNNER", "Use a custom Runner."],
         :drb => ["-X", "--drb", "Run examples via DRb. (For example against script/spec_server)"],
         :version => ["-v", "--version", "Show version"],
         :help => ["-h", "--help", "You're looking at it"]
@@ -95,37 +88,35 @@ module Spec
         @out_stream = out
         @options = Options.new(@error_stream, @out_stream)
 
-        @spec_parser = SpecParser.new
         @file_factory = File
 
         self.banner = "Usage: spec (FILE|DIRECTORY|GLOB)+ [options]"
         self.separator ""
+        on(*OPTIONS[:pattern]) {|pattern| @options.filename_pattern = pattern}
         on(*OPTIONS[:diff]) {|diff| @options.parse_diff(diff)}
         on(*OPTIONS[:colour]) {@options.colour = true}
         on(*OPTIONS[:example]) {|example| @options.parse_example(example)}
         on(*OPTIONS[:specification]) {|example| @options.parse_example(example)}
         on(*OPTIONS[:line]) {|line_number| @options.line_number = line_number.to_i}
         on(*OPTIONS[:format]) {|format| @options.parse_format(format)}
-        on(*OPTIONS[:require]) {|req| @options.parse_require(req)}
+        on(*OPTIONS[:require]) {|requires| invoke_requires(requires)}
         on(*OPTIONS[:backtrace]) {@options.backtrace_tweaker = NoisyBacktraceTweaker.new}
         on(*OPTIONS[:loadby]) {|loadby| @options.loadby = loadby}
         on(*OPTIONS[:reverse]) {@options.reverse = true}
         on(*OPTIONS[:timeout]) {|timeout| @options.timeout = timeout.to_f}
-        on(*OPTIONS[:heckle]) {|heckle| @options.parse_heckle(heckle)}
+        on(*OPTIONS[:heckle]) {|heckle| @options.load_heckle_runner(heckle)}
         on(*OPTIONS[:dry_run]) {@options.dry_run = true}
         on(*OPTIONS[:options_file]) {|options_file| parse_options_file(options_file)}
-        on(*OPTIONS[:generate_options]) do |options_file|
-        end
-        on(*OPTIONS[:runner]) do |runner|
-          @options.runner_arg = runner
-        end
+        on(*OPTIONS[:generate_options]) {|options_file|}
+        on(*OPTIONS[:runner]) {|runner|  @options.user_input_for_runner = runner}
         on(*OPTIONS[:drb]) {}
         on(*OPTIONS[:version]) {parse_version}
-        self.on_tail(*OPTIONS[:help]) {parse_help}
+        on_tail(*OPTIONS[:help]) {parse_help}
       end
 
-      def order!(argv=default_argv, &blk)
+      def order!(argv, &blk)
         @argv = argv
+        @options.argv = @argv.dup
         return if parse_generate_options
         return if parse_drb
         
@@ -134,21 +125,23 @@ module Spec
           blk.call(file) if blk
         end
 
-        if @options.line_number
-          set_spec_from_line_number
-        end
-
-        if @options.formatters.empty?
-          @options.create_formatter(Formatter::ProgressBarFormatter)
-        end
-
         @options
       end
 
       protected
+      def invoke_requires(requires)
+        requires.split(",").each do |file|
+          require file
+        end
+      end
+      
       def parse_options_file(options_file)
         option_file_args = IO.readlines(options_file).map {|l| l.chomp.split " "}.flatten
         @argv.push(*option_file_args)
+        # TODO - this is a brute force solution to http://rspec.lighthouseapp.com/projects/5645/tickets/293.
+        # Let's look for a cleaner way. Might not be one. But let's look. If not, perhaps
+        # this can be moved to a different method to indicate the special handling for drb?
+        parse_drb(@argv)
       end
 
       def parse_generate_options
@@ -175,14 +168,20 @@ module Spec
         end
         @out_stream.puts "\nOptions written to #{options_file}. You can now use these options with:"
         @out_stream.puts "spec --options #{options_file}"
-        @options.generate = true
+        @options.examples_should_not_be_run
       end
 
-      def parse_drb
+      def parse_drb(argv = nil)
+        argv ||= @options.argv # TODO - see note about about http://rspec.lighthouseapp.com/projects/5645/tickets/293
         is_drb = false
-        is_drb ||= @argv.delete(OPTIONS[:drb][0])
-        is_drb ||= @argv.delete(OPTIONS[:drb][1])
-        return is_drb ? DrbCommandLine.run(@argv, @error_stream, @out_stream) : nil
+        is_drb ||= argv.delete(OPTIONS[:drb][0])
+        is_drb ||= argv.delete(OPTIONS[:drb][1])
+        return false unless is_drb
+        @options.examples_should_not_be_run
+        DrbCommandLine.run(
+          self.class.parse(argv, @error_stream, @out_stream)
+        )
+        true
       end
 
       def parse_version
@@ -195,36 +194,8 @@ module Spec
         exit if stdout?
       end      
 
-      def set_spec_from_line_number
-        if @options.examples.empty?
-          if @options.files.length == 1
-            if @file_factory.file?(@options.files[0])
-              source = @file_factory.open(@options.files[0])
-              example = @spec_parser.spec_name_for(source, @options.line_number)
-              @options.parse_example(example)
-            elsif @file_factory.directory?(@options.files[0])
-              @error_stream.puts "You must specify one file, not a directory when using the --line option"
-              exit(1) if stderr?
-            else
-              @error_stream.puts "#{@options.files[0]} does not exist"
-              exit(2) if stderr?
-            end
-          else
-            @error_stream.puts "Only one file can be specified when using the --line option: #{@options.files.inspect}"
-            exit(3) if stderr?
-          end
-        else
-          @error_stream.puts "You cannot use both --line and --example"
-          exit(4) if stderr?
-        end
-      end
-
       def stdout?
         @out_stream == $stdout
-      end
-
-      def stderr?
-        @error_stream == $stderr
       end
     end
   end

@@ -3,12 +3,11 @@ require File.dirname(__FILE__) + '/../../spec_helper.rb'
 module Spec
   module Runner
     describe DrbCommandLine, "without running local server" do
-      it_should_behave_like "Test::Unit io sink"
       unless Config::CONFIG['ruby_install_name'] == 'jruby'
         it "should print error when there is no running local server" do
           err = StringIO.new
           out = StringIO.new
-          DrbCommandLine.run(['--version'], err, out)
+          DrbCommandLine.run(OptionParser.parse(['--version'], err, out))
 
           err.rewind
           err.read.should =~ /No server is running/
@@ -16,13 +15,12 @@ module Spec
       end    
     end
 
-    class DrbCommandLineSpec < ::Spec::DSL::Example
+    class DrbCommandLineSpec < ::Spec::Example::ExampleGroup
       describe DrbCommandLine, "with local server"
-      it_should_behave_like "Test::Unit io sink"
 
       class CommandLineForSpec
-        def self.run(argv, err, out)
-          exit Spec::Runner::CommandLine.run(argv, err, out)
+        def self.run(argv, stderr, stdout)
+          exit Spec::Runner::CommandLine.run(OptionParser.parse(argv, stderr, stdout))
         end
       end
       
@@ -77,12 +75,14 @@ module Spec
           end
         end
 
-        def run_spec_via_druby(args)
+        def run_spec_via_druby(argv)
           err, out = StringIO.new, StringIO.new
           out.instance_eval do
             def tty?; true end
           end
-          Spec::Runner::DrbCommandLine.run(args, err, out)
+          options = ::Spec::Runner::Options.new(err, out)
+          options.argv = argv
+          Spec::Runner::DrbCommandLine.run(options)
           out.rewind; out.read
         end
       end

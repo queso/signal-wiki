@@ -51,6 +51,9 @@ module Spec
           [1]
         end
         
+        def items
+          @items_in_collection_with_size_method
+        end
       end
 
       class HandCodedMock
@@ -96,6 +99,7 @@ module Spec
 end
 
 module Custom
+  require 'spec/runner/formatter/base_text_formatter'
   class Formatter < Spec::Runner::Formatter::BaseTextFormatter
     attr_reader :options, :where
     
@@ -118,6 +122,12 @@ module Custom
     def initialize(options)
       @options = options
     end
+
+    def diff_as_object(target, expected)
+      ""
+    end
   end
 end
 
+class FakeReporter < Spec::Runner::Reporter
+end

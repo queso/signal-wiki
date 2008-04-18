@@ -1,3 +1,5 @@
+require 'spec/runner/formatter/base_formatter'
+
 module Spec
   module Runner
     module Formatter
@@ -5,6 +7,7 @@ module Spec
       # non-text based ones too - just ignore the +output+ constructor
       # argument.
       class BaseTextFormatter < BaseFormatter
+        attr_reader :output, :pending_examples
         # Creates a new instance that will write to +where+. If +where+ is a
         # String, output will be written to the File with that name, otherwise
         # +where+ is exected to be an IO (or an object that responds to #puts and #write).
@@ -20,12 +23,11 @@ module Spec
           else
             @output = where
           end
-          @snippet_extractor = SnippetExtractor.new
           @pending_examples = []
         end
         
-        def example_pending(behaviour_name, example_name, message)
-          @pending_examples << ["#{behaviour_name} #{example_name}", message]
+        def example_pending(example, message)
+          @pending_examples << [example.__full_description, message]
         end
         
         def dump_failure(counter, failure)
@@ -98,7 +100,7 @@ module Spec
         def dry_run?
           @options.dry_run ? true : false
         end
-      
+        
         def backtrace_line(line)
           line.sub(/\A([^:]+:\d+)$/, '\\1:')
         end

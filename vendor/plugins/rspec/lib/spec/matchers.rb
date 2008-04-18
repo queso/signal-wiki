@@ -4,6 +4,7 @@ require 'spec/matchers/be_close'
 require 'spec/matchers/change'
 require 'spec/matchers/eql'
 require 'spec/matchers/equal'
+require 'spec/matchers/exist'
 require 'spec/matchers/has'
 require 'spec/matchers/have'
 require 'spec/matchers/include'
@@ -134,10 +135,12 @@ module Spec
   module Matchers
     module ModuleMethods
       attr_accessor :generated_description
+
       def clear_generated_description
-        @generated_description = nil
+        self.generated_description = nil
       end
     end
+
     extend ModuleMethods
 
     def method_missing(sym, *args, &block) # :nodoc:

@@ -1,35 +1,46 @@
 module Spec
   module Runner
     class Reporter
-      attr_reader :options
+      attr_reader :options, :example_groups
       
       def initialize(options)
         @options = options
+        @options.reporter = self
         clear
       end
       
-      def add_behaviour(name)
-        formatters.each{|f| f.add_behaviour(name)}
-        @behaviour_names << name
+      def add_example_group(example_group)
+        formatters.each do |f|
+          f.add_example_group(example_group)
+        end
+        example_groups << example_group
       end
       
-      def example_started(example_definition)
-        formatters.each{|f| f.example_started(example_definition)}
+      def example_started(example)
+        formatters.each{|f| f.example_started(example)}
       end
       
-      def example_finished(example_definition, error=nil, failure_location=nil, not_implemented = false)
-        @example_names << example_definition
+      def example_finished(example, error=nil)
+        @examples << example
         
-        if not_implemented
-          example_pending(@behaviour_names.last, example_definition)
-        elsif error.nil?
-          example_passed(example_definition)
-        elsif Spec::DSL::ExamplePendingError === error
-          example_pending(@behaviour_names.last, example_definition, error.message)
+        if error.nil?
+          example_passed(example)
+        elsif Spec::Example::ExamplePendingError === error
+          example_pending(example, error.message)
         else
-          example_failed(example_definition, error, failure_location)
+          example_failed(example, error)
         end
       end
+
+      def failure(example, error)
+        backtrace_tweaker.tweak_backtrace(error)
+        failure = Failure.new(example, error)
+        @failures << failure
+        formatters.each do |f|
+          f.example_failed(example, @failures.length, failure)
+        end
+      end
+      alias_method :example_failed, :failure
 
       def start(number_of_examples)
         clear
@@ -47,7 +58,7 @@ module Spec
         dump_pending
         dump_failures
         formatters.each do |f|
-          f.dump_summary(duration, @example_names.length, @failures.length, @pending_count)
+          f.dump_summary(duration, @examples.length, @failures.length, @pending_count)
           f.close
         end
         @failures.length
@@ -64,10 +75,10 @@ module Spec
       end
   
       def clear
-        @behaviour_names = []
+        @example_groups = []
         @failures = []
         @pending_count = 0
-        @example_names = []
+        @examples = []
         @start_time = nil
         @end_time = nil
       end
@@ -79,6 +90,7 @@ module Spec
           index + 1
         end
       end
+
       def dump_pending
         formatters.each{|f| f.dump_pending}
       end
@@ -88,49 +100,47 @@ module Spec
         return "0.0"
       end
       
-      def example_passed(name)
-        formatters.each{|f| f.example_passed(name)}
-      end
-
-      def example_failed(name, error, failure_location)
-        backtrace_tweaker.tweak_backtrace(error, failure_location)
-        example_name = "#{@behaviour_names.last} #{name}"
-        failure = Failure.new(example_name, error)
-        @failures << failure
-        formatters.each{|f| f.example_failed(name, @failures.length, failure)}
+      def example_passed(example)
+        formatters.each{|f| f.example_passed(example)}
       end
       
-      def example_pending(behaviour_name, example_name, message="Not Yet Implemented")
+      def example_pending(example, message="Not Yet Implemented")
         @pending_count += 1
-        formatters.each{|f| f.example_pending(behaviour_name, example_name, message)}
+        formatters.each do |f|
+          f.example_pending(example, message)
+        end
       end
       
       class Failure
-        attr_reader :exception
+        attr_reader :example, :exception
         
-        def initialize(example_name, exception)
-          @example_name = example_name
+        def initialize(example, exception)
+          @example = example
           @exception = exception
         end
 
         def header
           if expectation_not_met?
-            "'#{@example_name}' FAILED"
+            "'#{example_name}' FAILED"
           elsif pending_fixed?
-            "'#{@example_name}' FIXED"
+            "'#{example_name}' FIXED"
           else
-            "#{@exception.class.name} in '#{@example_name}'"
+            "#{@exception.class.name} in '#{example_name}'"
           end
         end
         
         def pending_fixed?
-          @exception.is_a?(Spec::DSL::PendingFixedError)
+          @exception.is_a?(Spec::Example::PendingExampleFixedError)
         end
 
         def expectation_not_met?
           @exception.is_a?(Spec::Expectations::ExpectationNotMetError)
         end
 
+        protected
+        def example_name
+          @example.__full_description
+        end
       end
     end
   end

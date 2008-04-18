@@ -4,31 +4,38 @@ module Spec
       FILE_SORTERS = {
         'mtime' => lambda {|file_a, file_b| File.mtime(file_b) <=> File.mtime(file_a)}
       }
-      
-      BUILT_IN_FORMATTERS = {
-        'specdoc'  => Formatter::SpecdocFormatter,
-        's'        => Formatter::SpecdocFormatter,
-        'html'     => Formatter::HtmlFormatter,
-        'h'        => Formatter::HtmlFormatter,
-        'rdoc'     => Formatter::RdocFormatter,
-        'r'        => Formatter::RdocFormatter,
-        'progress' => Formatter::ProgressBarFormatter,
-        'p'        => Formatter::ProgressBarFormatter,
-        'failing_examples' => Formatter::FailingExamplesFormatter,
-        'e'        => Formatter::FailingExamplesFormatter,
-        'failing_behaviours' => Formatter::FailingBehavioursFormatter,
-        'b'        => Formatter::FailingBehavioursFormatter
+
+      EXAMPLE_FORMATTERS = { # Load these lazily for better speed
+               'specdoc' => ['spec/runner/formatter/specdoc_formatter',                'Formatter::SpecdocFormatter'],
+                     's' => ['spec/runner/formatter/specdoc_formatter',                'Formatter::SpecdocFormatter'],
+                  'html' => ['spec/runner/formatter/html_formatter',                   'Formatter::HtmlFormatter'],
+                     'h' => ['spec/runner/formatter/html_formatter',                   'Formatter::HtmlFormatter'],
+              'progress' => ['spec/runner/formatter/progress_bar_formatter',           'Formatter::ProgressBarFormatter'],
+                     'p' => ['spec/runner/formatter/progress_bar_formatter',           'Formatter::ProgressBarFormatter'],
+      'failing_examples' => ['spec/runner/formatter/failing_examples_formatter',       'Formatter::FailingExamplesFormatter'],
+                     'e' => ['spec/runner/formatter/failing_examples_formatter',       'Formatter::FailingExamplesFormatter'],
+'failing_example_groups' => ['spec/runner/formatter/failing_example_groups_formatter', 'Formatter::FailingExampleGroupsFormatter'],
+                     'g' => ['spec/runner/formatter/failing_example_groups_formatter', 'Formatter::FailingExampleGroupsFormatter'],
+               'profile' => ['spec/runner/formatter/profile_formatter',                'Formatter::ProfileFormatter'],
+                     'o' => ['spec/runner/formatter/profile_formatter',                'Formatter::ProfileFormatter'],
+              'textmate' => ['spec/runner/formatter/text_mate_formatter',              'Formatter::TextMateFormatter']
       }
-      
+
+      STORY_FORMATTERS = {
+        'plain' => ['spec/runner/formatter/story/plain_text_formatter', 'Formatter::Story::PlainTextFormatter'],
+            'p' => ['spec/runner/formatter/story/plain_text_formatter', 'Formatter::Story::PlainTextFormatter'],
+         'html' => ['spec/runner/formatter/story/html_formatter',       'Formatter::Story::HtmlFormatter'],
+            'h' => ['spec/runner/formatter/story/html_formatter',       'Formatter::Story::HtmlFormatter']
+      }
+
       attr_accessor(
+        :filename_pattern,
         :backtrace_tweaker,
         :context_lines,
         :diff_format,
         :dry_run,
+        :profile,
         :examples,
-        :failure_file,
-        :formatters,
-        :generate,
         :heckle_runner,
         :line_number,
         :loadby,
@@ -36,58 +43,80 @@ module Spec
         :reverse,
         :timeout,
         :verbose,
-        :runner_arg
+        :user_input_for_runner,
+        :error_stream,
+        :output_stream,
+        # TODO: BT - Figure out a better name
+        :argv
       )
-      attr_reader :colour, :differ_class, :files, :behaviours
+      attr_reader :colour, :differ_class, :files, :example_groups
 
       def initialize(error_stream, output_stream)
         @error_stream = error_stream
         @output_stream = output_stream
+        @filename_pattern = "**/*_spec.rb"
         @backtrace_tweaker = QuietBacktraceTweaker.new
         @examples = []
-        @formatters = []
         @colour = false
+        @profile = false
         @dry_run = false
         @reporter = Reporter.new(self)
         @context_lines = 3
         @diff_format  = :unified
         @files = []
-        @behaviours = []
+        @example_groups = []
+        @examples_run = false
+        @examples_should_be_run = nil
+        @user_input_for_runner = nil
       end
 
-      def add_behaviour(behaviour)
-        @behaviours << behaviour
+      def add_example_group(example_group)
+        @example_groups << example_group
+      end
+
+      def remove_example_group(example_group)
+        @example_groups.delete(example_group)
       end
 
       def run_examples
-        runner = custom_runner || BehaviourRunner.new(self)
-        runner.run
-      end
+        return true unless examples_should_be_run?
+        runner = custom_runner || ExampleGroupRunner.new(self)
 
-      def colour=(colour)
-        @colour = colour
-        begin; \
-          require 'Win32/Console/ANSI' if @colour && PLATFORM =~ /win32/; \
-        rescue LoadError ; \
-          raise "You must gem install win32console to use colour on Windows" ; \
+        unless @files_loaded
+          runner.load_files(files_to_load)
+          @files_loaded = true
+        end
+
+        if example_groups.empty?
+          true
+        else
+          set_spec_from_line_number if line_number
+          success = runner.run
+          @examples_run = true
+          heckle if heckle_runner
+          success
         end
       end
 
-      def custom_runner?
-        return @runner_arg ? true : false
+      def examples_run?
+        @examples_run
       end
 
-      def custom_runner
-        return nil unless custom_runner?
-        klass_name, arg = split_at_colon(@runner_arg)
-        runner_type = load_class(klass_name, 'behaviour runner', '--runner')
-        return runner_type.new(self, arg)
-      end
+      def examples_should_not_be_run
+        @examples_should_be_run = false
+      end      
 
-      def differ_class=(klass)
-        return unless klass
-        @differ_class = klass
-        Spec::Expectations.differ = self.differ_class.new(self)
+      def colour=(colour)
+        @colour = colour
+        if @colour && RUBY_PLATFORM =~ /win32/ ;\
+          begin ;\
+            require 'rubygems' ;\
+            require 'Win32/Console/ANSI' ;\
+          rescue LoadError ;\
+            warn "You must 'gem install win32console' to use colour on Windows" ;\
+            @colour = false ;\
+          end
+        end
       end
 
       def parse_diff(format)
@@ -113,43 +142,80 @@ module Spec
       end
 
       def parse_format(format_arg)
-        format, where = split_at_colon(format_arg)
-        # This funky regexp checks whether we have a FILE_NAME or not
+        format, where = ClassAndArgumentsParser.parse(format_arg)
         unless where
           raise "When using several --format options only one of them can be without a file" if @out_used
           where = @output_stream
           @out_used = true
         end
-
-        formatter_type = BUILT_IN_FORMATTERS[format] || load_class(format, 'formatter', '--format')
-        create_formatter(formatter_type, where)
+        @format_options ||= []
+        @format_options << [format, where]
+      end
+      
+      def formatters
+        @format_options ||= [['progress', @output_stream]]
+        @formatters ||= load_formatters(@format_options, EXAMPLE_FORMATTERS)
       end
 
-      def create_formatter(formatter_type, where=@output_stream)
-        formatter = formatter_type.new(self, where)
-        @formatters << formatter
-        formatter
+      def story_formatters
+        @format_options ||= [['plain', @output_stream]]
+        @formatters ||= load_formatters(@format_options, STORY_FORMATTERS)
+      end
+      
+      def load_formatters(format_options, formatters)
+        format_options.map do |format, where|
+          formatter_type = if formatters[format]
+            require formatters[format][0]
+            eval(formatters[format][1], binding, __FILE__, __LINE__)
+          else
+            load_class(format, 'formatter', '--format')
+          end
+          formatter_type.new(self, where)
+        end
       end
 
-      def parse_require(req)
-        req.split(",").each{|file| require file}
-      end
-
-      def parse_heckle(heckle)
-        heckle_require = [/mswin/, /java/].detect{|p| p =~ RUBY_PLATFORM} ? 'spec/runner/heckle_runner_unsupported' : 'spec/runner/heckle_runner'
-        require heckle_require
+      def load_heckle_runner(heckle)
+        suffix = [/mswin/, /java/].detect{|p| p =~ RUBY_PLATFORM} ? '_unsupported' : ''
+        require "spec/runner/heckle_runner#{suffix}"
         @heckle_runner = HeckleRunner.new(heckle)
       end
 
-      def split_at_colon(s)
-        if s =~ /([a-zA-Z_]+(?:::[a-zA-Z_]+)*):?(.*)/
-          arg = $2 == "" ? nil : $2
-          [$1, arg]
-        else
-          raise "Couldn't parse #{s.inspect}"
+      def number_of_examples
+        total = 0
+        @example_groups.each do |example_group|
+          total += example_group.number_of_examples
         end
+        total
+      end
+
+      def files_to_load
+        result = []
+        sorted_files.each do |file|
+          if File.directory?(file)
+            filename_pattern.split(",").each do |pattern|
+              result += Dir[File.expand_path("#{file}/#{pattern.strip}")]
+            end
+          elsif File.file?(file)
+            result << file
+          else
+            raise "File or directory not found: #{file}"
+          end
+        end
+        result
       end
       
+      protected
+      def examples_should_be_run?
+        return @examples_should_be_run unless @examples_should_be_run.nil?
+        @examples_should_be_run = true
+      end
+      
+      def differ_class=(klass)
+        return unless klass
+        @differ_class = klass
+        Spec::Expectations.differ = self.differ_class.new(self)
+      end
+
       def load_class(name, kind, option)
         if name =~ /\A(?:::)?([A-Z]\w*(?:::[A-Z]\w*)*)\z/
           arg = $2 == "" ? nil : $2
@@ -167,44 +233,60 @@ module Spec
           if $_spec_spec ; raise e ; else exit(1) ; end
         end
       end
-
-      def load_paths
-        paths.each do |path|
-          load path
-        end
+      
+      def custom_runner
+        return nil unless custom_runner?
+        klass_name, arg = ClassAndArgumentsParser.parse(user_input_for_runner)
+        runner_type = load_class(klass_name, 'behaviour runner', '--runner')
+        return runner_type.new(self, arg)
       end
 
-      def paths
-        result = []
-        sorted_files.each do |file|
-          if test ?d, file
-            result += Dir[File.expand_path("#{file}/**/*.rb")]
-          elsif test ?f, file
-            result << file
-          else
-            raise "File or directory not found: #{file}"
-          end
-        end
-        result
-      end
-
-      def number_of_examples
-        @behaviours.inject(0) {|sum, behaviour| sum + behaviour.number_of_examples}
+      def custom_runner?
+        return user_input_for_runner ? true : false
       end
       
-      protected
+      def heckle
+        heckle_runner = self.heckle_runner
+        self.heckle_runner = nil
+        heckle_runner.heckle_with
+      end
+      
       def sorted_files
         return sorter ? files.sort(&sorter) : files
       end
-      
+
       def sorter
         FILE_SORTERS[loadby]
       end
-      
+
       def default_differ
         require 'spec/expectations/differs/default'
         self.differ_class = Spec::Expectations::Differs::Default
-      end      
+      end
+
+      def set_spec_from_line_number
+        if examples.empty?
+          if files.length == 1
+            if File.directory?(files[0])
+              error_stream.puts "You must specify one file, not a directory when using the --line option"
+              exit(1) if stderr?
+            else
+              example = SpecParser.new.spec_name_for(files[0], line_number)
+              @examples = [example]
+            end
+          else
+            error_stream.puts "Only one file can be specified when using the --line option: #{files.inspect}"
+            exit(3) if stderr?
+          end
+        else
+          error_stream.puts "You cannot use both --line and --example"
+          exit(4) if stderr?
+        end
+      end
+
+      def stderr?
+        @error_stream == $stderr
+      end
     end
   end
 end
