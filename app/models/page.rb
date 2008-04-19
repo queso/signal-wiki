@@ -43,8 +43,8 @@ class Page < ActiveRecord::Base
   
   def is_spam?(site)
     v = Viking.connect("akismet", {:api_key => site.akismet_key, :blog => site.akismet_url})
-    response = v.check_comment(:comment_content => body.to_s, :comment_author => user.login.to_s, :user_ip => ip.to_s, :user_agent => agent.to_s, :referrer => referrer.to_s)
-    logger.info "Calling Akismet for page #{permalink} by #{user.login.to_s} using ip #{ip}:  #{response[:spam]}"
+    response = v.check_comment(:comment_content => body.to_s, :comment_author => username.to_s, :user_ip => ip.to_s, :user_agent => agent.to_s, :referrer => referrer.to_s)
+    logger.info "Calling Akismet for page #{permalink} by #{username.to_s} using ip #{ip}:  #{response[:spam]}"
     return response[:spam]
   end
   
@@ -104,6 +104,9 @@ class Page < ActiveRecord::Base
     RAILS_DEFAULT_LOGGER.info "UNLOCKED #{self.permalink}"
   end
   
+  def username
+    user.blank? ? "anonymous" : user.login
+  end
   def self.find_all_by_wiki_word(wiki_word, site = nil)
     site ||= Site.find(:first)
     pages = site.pages.find(:all)

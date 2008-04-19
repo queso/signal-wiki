@@ -1,5 +1,6 @@
 class PagesController < ApplicationController
   before_filter :require_login, :except => [:index, :show, :revision, :search]
+  before_filter :login_required, :only => [:destroy]
   before_filter :require_admin, :only => [:lock]
   before_filter :check_private, :only => [:show, :revision]
   caches_page :show
@@ -91,7 +92,7 @@ class PagesController < ApplicationController
         format.html { redirect_to(wiki_page_url(@page)) }
         format.xml  { render :xml => @page, :status => :created, :location => @page }
       else
-        format.html { render :action => "new" }
+        format.html { puts @page.errors.inspect; render :action => "new" }
         format.xml  { render :xml => @page.errors, :status => :unprocessable_entity }
       end
     end

@@ -17,7 +17,8 @@ module PagesHelper
   end
   
   def current_revision(id, version)
-    version == Page.find(id).version
+    page = Page.find(id)
+    page ? (version == page.version) : false
   end
   
   def body_input(f)

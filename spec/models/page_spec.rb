@@ -5,6 +5,7 @@ describe Page, "validity" do
   
   before(:each) do
     @page = Page.new :site_id => 1
+    @site = mock_model(Site)
   end
 
   it "should not be valid" do
@@ -17,6 +18,19 @@ describe Page, "validity" do
     @page.should be_valid
   end
   
+  it "should not be valid if site is spam" do
+    @page.stub!(:is_spam?).and_return true
+    @page.stub!(:site).and_return @site
+    @site.should_receive(:akismet_key?).and_return true
+    @page.should_not be_valid
+  end
+  
+  it "should connect to viking for spam info" do
+    @v = mock_model(Object)
+    Viking.should_receive(:connect).and_return @v
+    @v.should_receive(:check_comment).and_return :spam => true
+    @page.is_spam?(@page.site).should == true
+  end
 end
 
 describe Page, "creating links" do

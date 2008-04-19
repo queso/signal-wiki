@@ -11,3 +11,5 @@ db/*.sqlite3
 index/*
 public/javascripts/signal.js
 public/stylesheets/signal.css
+.project
+.loadpath

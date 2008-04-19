@@ -8,7 +8,7 @@
 			updated <%= time_ago_in_words(rev.updated_at) %> ago 
 			by <%= author(rev.user_id)  %>
 			<% if rev.respond_to?(:previous) && !rev.previous.nil? %>
-			<%= link_to "(Diff)", diff_page_url(@page.permalink, :v1 => rev.version, :v2 => rev.previous) %>
+			<%= link_to "(Diff)", diff_page_url(@page.permalink, :v1 => rev.version, :v2 => rev.previous.version) %>
 			<% end %>
 	</li>
 <% end %>

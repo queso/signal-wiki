@@ -13,7 +13,7 @@ public
   # collection methods
 
   def create
-    flag = current_user.flags.create!(params[:flag])
+    flag = current_user.flags.create(params[:flag])
     flash[:notice] = if flag.new_record?
       "You already flagged this content!"
     else # success
